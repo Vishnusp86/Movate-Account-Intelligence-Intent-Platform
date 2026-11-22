@@ -26,6 +26,9 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  MapPin,
+  Briefcase,
+  DollarSign,
 } from "lucide-react"
 import dbData from "@/data/canonical_database.json"
 import { AccountLevelBreakupRecord } from "@/lib/db/repository"
@@ -188,15 +191,15 @@ export default function VectorIntelPage() {
   }, [totalPages, safePage])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 max-w-full overflow-x-hidden min-w-0">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">
-              Vector Website & Visitor Intelligence
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight">
+              Vector Website Intelligence
             </h1>
-            <Badge variant="outline" className="text-teal-700 bg-teal-50 border-teal-200">
+            <Badge variant="outline" className="text-teal-700 bg-teal-50 border-teal-200 text-xs">
               Org 129519 (Movate)
             </Badge>
           </div>
@@ -205,33 +208,40 @@ export default function VectorIntelPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Badge variant="success" className="gap-1">
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <Badge variant="success" className="gap-1 text-xs py-0.5">
             <CheckCircle2 className="size-3" />
             Live Ingestion Active
           </Badge>
-          <span className="text-xs text-slate-400">Freshness: Sun Nov 22 2026</span>
+          <span className="text-[11px] text-slate-400">Freshness: Sun Nov 22 2026</span>
         </div>
       </div>
 
-      {/* Primary 4 Navigation Tabs */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-medium text-slate-600 max-w-full overflow-x-auto">
+      {/* Primary 4 Navigation Tabs - Fully Touch-Scrollable on Mobile */}
+      <div className="w-full overflow-x-auto scrollbar-none pb-1 -mx-1 px-1">
+        <div className="inline-flex items-center gap-1 bg-slate-100 p-1.5 rounded-xl text-xs font-medium text-slate-600 min-w-max shadow-inner">
           {/* Tab 1: All Visitors */}
           <button
+            type="button"
             onClick={() => setActiveTab("All")}
-            className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
-              activeTab === "All" ? "bg-white text-slate-900 shadow-xs font-semibold" : "hover:text-slate-900"
+            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "All"
+                ? "bg-white text-slate-900 shadow-sm font-semibold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
             }`}
           >
-            All Identified Visitors ({allVisitors.length})
+            <Users className="size-3.5 text-slate-500" />
+            <span>All Identified Visitors ({allVisitors.length})</span>
           </button>
 
           {/* Tab 2: Key Decision-Makers */}
           <button
+            type="button"
             onClick={() => setActiveTab("Key")}
-            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "Key" ? "bg-white text-teal-800 shadow-xs font-semibold" : "hover:text-slate-900"
+            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "Key"
+                ? "bg-white text-teal-800 shadow-sm font-semibold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
             }`}
           >
             <Shield className="size-3.5 text-teal-600" />
@@ -240,9 +250,12 @@ export default function VectorIntelPage() {
 
           {/* Tab 3: Target & Client Visitors */}
           <button
+            type="button"
             onClick={() => setActiveTab("TargetClient")}
-            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "TargetClient" ? "bg-white text-blue-800 shadow-xs font-semibold" : "hover:text-slate-900"
+            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "TargetClient"
+                ? "bg-white text-blue-800 shadow-sm font-semibold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
             }`}
           >
             <Target className="size-3.5 text-blue-600" />
@@ -251,19 +264,98 @@ export default function VectorIntelPage() {
 
           {/* Tab 4: Account-Level Breakup */}
           <button
+            type="button"
             onClick={() => setActiveTab("AccountBreakup")}
-            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
-              activeTab === "AccountBreakup" ? "bg-white text-emerald-800 shadow-xs font-semibold" : "hover:text-slate-900"
+            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "AccountBreakup"
+                ? "bg-white text-emerald-800 shadow-sm font-semibold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
             }`}
           >
             <Trophy className="size-3.5 text-amber-500" />
             <span>Account-Level Breakup ({accountBreakup.length})</span>
           </button>
         </div>
+      </div>
 
-        {/* Global Search Bar */}
-        <div className="relative w-full sm:w-72">
-          <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+      {/* Search Bar & Sub-Filters Row */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Sub-Filters per Tab */}
+        <div className="w-full sm:w-auto">
+          {activeTab === "Key" && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-slate-500 text-xs font-medium mr-1">Seniority:</span>
+              {["All", "C-Level", "VP", "Director", "Board"].map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => setSeniorityFilter(s)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer touch-manipulation active:scale-95 ${
+                    seniorityFilter === s
+                      ? "bg-slate-900 text-white border-slate-900 shadow-xs"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "TargetClient" && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-slate-500 text-xs font-medium mr-1">Segment:</span>
+              {[
+                { label: "All Matched", key: "All", count: tcCounts.all },
+                { label: "ITS EN", key: "ITS EN", count: tcCounts.its },
+                { label: "DCX EN", key: "DCX EN", count: tcCounts.dcx },
+                { label: "Existing Clients (EC)", key: "EC", count: tcCounts.ec },
+              ].map((chip) => (
+                <button
+                  type="button"
+                  key={chip.key}
+                  onClick={() => setTargetClientFilter(chip.key)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer touch-manipulation active:scale-95 ${
+                    targetClientFilter === chip.key
+                      ? "bg-blue-900 text-white border-blue-900 shadow-xs"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {chip.label} ({chip.count})
+                </button>
+              ))}
+            </div>
+          )}
+
+          {activeTab === "AccountBreakup" && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-slate-500 text-xs font-medium mr-1">Filter:</span>
+              {[
+                { label: "All Ranked", key: "All", count: breakupCounts.all },
+                { label: "Targets (ITS & DCX)", key: "Targets", count: breakupCounts.targets },
+                { label: "Clients (EC)", key: "Clients", count: breakupCounts.clients },
+                { label: "High Volume (≥ 5 Visits)", key: "HighIntent", count: breakupCounts.highIntent },
+              ].map((chip) => (
+                <button
+                  type="button"
+                  key={chip.key}
+                  onClick={() => setBreakupFilter(chip.key)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer touch-manipulation active:scale-95 ${
+                    breakupFilter === chip.key
+                      ? "bg-emerald-900 text-white border-emerald-900 shadow-xs"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {chip.label} ({chip.count})
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Search Input */}
+        <div className="relative w-full sm:w-72 shrink-0">
+          <Search className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -272,107 +364,34 @@ export default function VectorIntelPage() {
                 ? "Search company, domain, industry..."
                 : "Search visitor, title, company..."
             }
-            className="pl-8 text-xs h-8.5 bg-white"
+            className="pl-9 text-xs h-9.5 bg-white w-full rounded-lg border-slate-300 shadow-2xs"
           />
         </div>
       </div>
 
-      {/* Secondary Filter Chips for Active Tab */}
-      {activeTab === "Key" && (
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-slate-400 text-[11px] mr-1">Seniority Level:</span>
-          {["All", "C-Level", "VP", "Director", "Board"].map((s) => (
-            <button
-              key={s}
-              onClick={() => setSeniorityFilter(s)}
-              className={`px-2.5 py-1 rounded border text-[11px] font-medium transition-colors ${
-                seniorityFilter === s
-                  ? "bg-slate-900 text-white border-slate-900"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "TargetClient" && (
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-slate-400 text-[11px] mr-1">Segment Filter:</span>
-          {[
-            { label: "All Matched", key: "All", count: tcCounts.all },
-            { label: "ITS EN Targets", key: "ITS EN", count: tcCounts.its },
-            { label: "DCX EN Targets", key: "DCX EN", count: tcCounts.dcx },
-            { label: "Existing Clients (EC)", key: "EC", count: tcCounts.ec },
-          ].map((chip) => (
-            <button
-              key={chip.key}
-              onClick={() => setTargetClientFilter(chip.key)}
-              className={`px-2.5 py-1 rounded border text-[11px] font-medium transition-colors ${
-                targetClientFilter === chip.key
-                  ? "bg-blue-900 text-white border-blue-900"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {chip.label} ({chip.count})
-            </button>
-          ))}
-        </div>
-      )}
-
-      {activeTab === "AccountBreakup" && (
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-slate-400 text-[11px] mr-1">Account Filter:</span>
-          {[
-            { label: "All Ranked Companies", key: "All", count: breakupCounts.all },
-            { label: "Target Accounts (ITS & DCX EN)", key: "Targets", count: breakupCounts.targets },
-            { label: "Existing Clients (EC)", key: "Clients", count: breakupCounts.clients },
-            { label: "High Volume (≥ 5 Visits)", key: "HighIntent", count: breakupCounts.highIntent },
-          ].map((chip) => (
-            <button
-              key={chip.key}
-              onClick={() => setBreakupFilter(chip.key)}
-              className={`px-2.5 py-1 rounded border text-[11px] font-medium transition-colors ${
-                breakupFilter === chip.key
-                  ? "bg-emerald-900 text-white border-emerald-900"
-                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-              }`}
-            >
-              {chip.label} ({chip.count})
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Top Pagination & Range Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 px-1">
-        <div className="flex items-center gap-2">
+      {/* Top Pagination & Range Bar - Touch Friendly */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 bg-white p-3 rounded-lg border border-slate-200/80 shadow-2xs">
+        <div className="flex items-center justify-between sm:justify-start gap-2">
           <span>
             Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{" "}
             <strong className="text-slate-900">{endIndex}</strong> of{" "}
-            <strong className="text-slate-900">{totalItems.toLocaleString()}</strong>{" "}
-            {activeTab === "AccountBreakup"
-              ? "companies (ranked most visited to least)"
-              : activeTab === "Key"
-              ? "decision-makers"
-              : "visitors"}
+            <strong className="text-slate-900">{totalItems.toLocaleString()}</strong> entries
           </span>
           {searchQuery && (
-            <Badge variant="outline" className="text-[10px]">
-              Filtered by &ldquo;{searchQuery}&rdquo;
+            <Badge variant="outline" className="text-[10px] hidden sm:inline-flex">
+              Filtered
             </Badge>
           )}
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
           <div className="flex items-center gap-1.5">
-            <span className="text-slate-500 text-[11px]">Rows per page:</span>
+            <span className="text-slate-500 text-xs">Rows:</span>
             <select
               value={pageSize}
               onChange={(e) => setPageSize(Number(e.target.value))}
               aria-label="Rows per page"
-              className="h-7 text-[11px] bg-white border border-slate-200 rounded px-2 py-0.5 text-slate-700 focus:outline-none focus:ring-1 focus:ring-slate-400"
+              className="h-8 text-xs bg-slate-50 border border-slate-300 rounded-md px-2 text-slate-800 cursor-pointer touch-manipulation focus:outline-none focus:ring-1 focus:ring-slate-900"
             >
               <option value={25}>25</option>
               <option value={50}>50</option>
@@ -384,47 +403,54 @@ export default function VectorIntelPage() {
 
           <div className="flex items-center gap-1">
             <button
+              type="button"
               onClick={() => setCurrentPage(1)}
               disabled={safePage === 1}
-              className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
+              className="p-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 cursor-pointer touch-manipulation"
               title="First Page"
             >
-              <ChevronsLeft className="size-3.5" />
+              <ChevronsLeft className="size-4" />
             </button>
             <button
+              type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={safePage === 1}
-              className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
-              title="Previous Page"
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 font-medium cursor-pointer touch-manipulation flex items-center gap-1"
             >
-              <ChevronLeft className="size-3.5" />
+              <ChevronLeft className="size-4" />
+              <span className="hidden sm:inline">Prev</span>
             </button>
-            <span className="px-2 font-medium text-slate-700 text-[11px]">
-              Page {safePage} of {totalPages}
+            <span className="px-2 font-semibold text-slate-800 text-xs whitespace-nowrap">
+              {safePage} / {totalPages}
             </span>
             <button
+              type="button"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
-              className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
-              title="Next Page"
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 font-medium cursor-pointer touch-manipulation flex items-center gap-1"
             >
-              <ChevronRight className="size-3.5" />
+              <span className="hidden sm:inline">Next</span>
+              <ChevronRight className="size-4" />
             </button>
             <button
+              type="button"
               onClick={() => setCurrentPage(totalPages)}
               disabled={safePage === totalPages}
-              className="p-1 rounded border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
+              className="p-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 cursor-pointer touch-manipulation"
               title="Last Page"
             >
-              <ChevronsRight className="size-3.5" />
+              <ChevronsRight className="size-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Data Display Card */}
-      <Card className="p-0 overflow-hidden shadow-xs">
-        <div className="overflow-x-auto">
+      {/* Main Content: Responsive Card View on Mobile + Desktop Table on Desktop */}
+      <Card className="p-0 overflow-hidden shadow-xs border-slate-200">
+        {/* ========================================================================= */}
+        {/* 1. DESKTOP TABLE VIEW (Visible on tablet & desktop >= 768px)               */}
+        {/* ========================================================================= */}
+        <div className="hidden md:block overflow-x-auto">
           {/* VIEW 1: All Identified Visitors */}
           {activeTab === "All" && (
             <table className="w-full text-xs text-left">
@@ -553,7 +579,7 @@ export default function VectorIntelPage() {
             </table>
           )}
 
-          {/* VIEW 3: Target & Client Visitors (ITS EN, DCX EN & EC) */}
+          {/* VIEW 3: Target & Client Visitors */}
           {activeTab === "TargetClient" && (
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
@@ -636,7 +662,7 @@ export default function VectorIntelPage() {
             </table>
           )}
 
-          {/* VIEW 4: Account-Level Breakup (Ranked Most Visited to Least) */}
+          {/* VIEW 4: Account-Level Breakup */}
           {activeTab === "AccountBreakup" && (
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
@@ -661,7 +687,6 @@ export default function VectorIntelPage() {
                 ) : (
                   paginatedItems.map((comp: AccountLevelBreakupRecord) => (
                     <tr key={comp.id} className="hover:bg-slate-50/60 transition-colors">
-                      {/* Rank Column */}
                       <td className="py-3 px-4 text-center font-bold text-slate-700">
                         {comp.rank <= 3 ? (
                           <span className="inline-flex items-center justify-center size-6 rounded-full bg-amber-100 text-amber-800 text-[11px]">
@@ -675,8 +700,6 @@ export default function VectorIntelPage() {
                           <span className="text-slate-500 text-[11px]">#{comp.rank}</span>
                         )}
                       </td>
-
-                      {/* Company Name & Domain */}
                       <td className="py-3 px-4">
                         <Link
                           href={`/accounts/${comp.domain}`}
@@ -686,16 +709,12 @@ export default function VectorIntelPage() {
                         </Link>
                         <div className="text-[10px] text-slate-400">{comp.domain}</div>
                       </td>
-
-                      {/* Total Visits Badge */}
                       <td className="py-3 px-3 text-center">
                         <div className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full border text-[11px] bg-slate-900 text-white border-slate-900 shadow-2xs">
                           {comp.visitors >= 10 && <Flame className="size-3 text-amber-400" />}
                           <span>{comp.visitors} Visits</span>
                         </div>
                       </td>
-
-                      {/* Segment */}
                       <td className="py-3 px-3">
                         <Badge
                           variant={
@@ -714,8 +733,6 @@ export default function VectorIntelPage() {
                           {comp.segment}
                         </Badge>
                       </td>
-
-                      {/* Seniority Breakdown Pill Bar */}
                       <td className="py-3 px-3 text-center">
                         <div className="inline-flex items-center gap-1 text-[10px]">
                           {comp.c_level > 0 && (
@@ -745,19 +762,13 @@ export default function VectorIntelPage() {
                           )}
                         </div>
                       </td>
-
-                      {/* Annual Revenue */}
                       <td className="py-3 px-3 font-medium text-emerald-700">
                         {comp.revenue || "Private / Undisclosed"}
                       </td>
-
-                      {/* Industry / Size */}
                       <td className="py-3 px-3">
                         <div className="text-slate-800">{comp.industry || "General"}</div>
                         <div className="text-[10px] text-slate-400">{comp.company_size || "Enterprise"}</div>
                       </td>
-
-                      {/* Action */}
                       <td className="py-3 px-4 text-right">
                         <Link
                           href={`/accounts/${comp.domain}`}
@@ -775,38 +786,212 @@ export default function VectorIntelPage() {
           )}
         </div>
 
-        {/* Bottom Pagination Bar */}
+        {/* ========================================================================= */}
+        {/* 2. MOBILE CARD FEED (Visible on mobile screens < 768px)                   */}
+        {/* ========================================================================= */}
+        <div className="block md:hidden divide-y divide-slate-100">
+          {paginatedItems.length === 0 ? (
+            <div className="p-6 text-center text-xs text-slate-400">
+              No results found matching your search.
+            </div>
+          ) : activeTab === "AccountBreakup" ? (
+            // Mobile Card for Account-Level Breakup
+            paginatedItems.map((comp: AccountLevelBreakupRecord) => (
+              <div key={comp.id} className="p-3.5 space-y-2.5 bg-white hover:bg-slate-50/50">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center justify-center size-6 rounded-full bg-slate-100 text-slate-800 font-bold text-xs shrink-0">
+                      #{comp.rank}
+                    </span>
+                    <div>
+                      <Link
+                        href={`/accounts/${comp.domain}`}
+                        className="font-semibold text-slate-900 text-sm hover:text-blue-700 transition-colors leading-tight block"
+                      >
+                        {comp.company}
+                      </Link>
+                      <div className="text-[11px] text-slate-400">{comp.domain}</div>
+                    </div>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full text-xs bg-slate-900 text-white shrink-0 shadow-2xs">
+                    {comp.visitors >= 10 && <Flame className="size-3 text-amber-400" />}
+                    <span>{comp.visitors} Visits</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <Badge
+                    variant={
+                      comp.segment.includes("Target & Client") || (comp.is_target && comp.is_client)
+                        ? "default"
+                        : comp.segment.includes("ITS")
+                        ? "info"
+                        : comp.segment.includes("DCX")
+                        ? "warning"
+                        : comp.segment.includes("EC")
+                        ? "success"
+                        : "outline"
+                    }
+                    className="text-[10px]"
+                  >
+                    {comp.segment}
+                  </Badge>
+
+                  <span className="text-[11px] text-emerald-700 font-medium">
+                    {comp.revenue || "Private"}
+                  </span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-[11px] text-slate-500">{comp.industry || "General"}</span>
+                </div>
+
+                {/* Role Breakdown Bar */}
+                <div className="flex flex-wrap items-center gap-1 text-[10px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+                  <span className="text-slate-400 font-medium mr-1">Roles:</span>
+                  {comp.c_level > 0 && (
+                    <span className="px-1.5 py-0.5 rounded font-semibold bg-red-100 text-red-800">
+                      C-Level: {comp.c_level}
+                    </span>
+                  )}
+                  {comp.vp > 0 && (
+                    <span className="px-1.5 py-0.5 rounded font-semibold bg-purple-100 text-purple-800">
+                      VP: {comp.vp}
+                    </span>
+                  )}
+                  {comp.director > 0 && (
+                    <span className="px-1.5 py-0.5 rounded font-semibold bg-blue-100 text-blue-800">
+                      Dir: {comp.director}
+                    </span>
+                  )}
+                  {comp.manager > 0 && (
+                    <span className="px-1.5 py-0.5 rounded font-medium bg-slate-200/70 text-slate-700">
+                      Mgr: {comp.manager}
+                    </span>
+                  )}
+                  {comp.ic > 0 && (
+                    <span className="px-1.5 py-0.5 rounded text-slate-500">
+                      IC: {comp.ic}
+                    </span>
+                  )}
+                </div>
+
+                <div className="pt-1">
+                  <Link
+                    href={`/accounts/${comp.domain}`}
+                    className="w-full flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-800 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  >
+                    <span>View Account Scope Card</span>
+                    <ArrowUpRight className="size-3.5" />
+                  </Link>
+                </div>
+              </div>
+            ))
+          ) : (
+            // Mobile Card for Visitors (All, Key, TargetClient)
+            paginatedItems.map((v: any) => (
+              <div key={v.id} className="p-3.5 space-y-2 bg-white hover:bg-slate-50/50">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="font-semibold text-slate-900 text-sm leading-tight">{v.name}</div>
+                    <div className="text-xs text-slate-700 font-medium mt-0.5">{v.title}</div>
+                    {v.department && (
+                      <div className="text-[11px] text-slate-400">{v.department}</div>
+                    )}
+                  </div>
+
+                  {v.seniority ? (
+                    <Badge
+                      variant={
+                        v.seniority.includes("C-Level") || v.seniority.includes("Board")
+                          ? "default"
+                          : v.seniority.includes("VP")
+                          ? "info"
+                          : "secondary"
+                      }
+                      className="text-[10px] shrink-0"
+                    >
+                      {v.seniority}
+                    </Badge>
+                  ) : v.target_client_segment ? (
+                    <Badge variant="info" className="text-[10px] shrink-0">
+                      {v.target_client_segment}
+                    </Badge>
+                  ) : null}
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 text-xs pt-0.5">
+                  <Link
+                    href={`/accounts/${v.company_domain || v.company}`}
+                    className="font-medium text-blue-700 hover:underline flex items-center gap-1"
+                  >
+                    <Building2 className="size-3 text-slate-400" />
+                    <span>{v.company_name || v.company}</span>
+                  </Link>
+
+                  {v.location && (
+                    <span className="text-[11px] text-slate-500 flex items-center gap-0.5">
+                      <MapPin className="size-3 text-slate-400" />
+                      <span>{v.location}</span>
+                    </span>
+                  )}
+                </div>
+
+                {v.linkedin_url && (
+                  <div className="pt-1">
+                    <a
+                      href={`https://${v.linkedin_url}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border border-blue-200 bg-blue-50/60 text-blue-700 text-xs font-medium hover:bg-blue-100 transition-colors"
+                    >
+                      <span>View LinkedIn Profile</span>
+                      <ExternalLink className="size-3" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* ========================================================================= */}
+        {/* Bottom Pagination Bar - Fully Responsive                                   */}
+        {/* ========================================================================= */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 bg-slate-50/80 border-t border-slate-200 text-xs text-slate-600">
-          <div>
+          <div className="text-center sm:text-left">
             Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{" "}
             <strong className="text-slate-900">{endIndex}</strong> of{" "}
             <strong className="text-slate-900">{totalItems.toLocaleString()}</strong> entries
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center justify-center gap-1">
             <button
+              type="button"
               onClick={() => setCurrentPage(1)}
               disabled={safePage === 1}
-              className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-[11px] font-medium"
+              className="px-2 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 font-medium cursor-pointer touch-manipulation"
             >
               First
             </button>
             <button
+              type="button"
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={safePage === 1}
-              className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-[11px] font-medium flex items-center gap-0.5"
+              className="px-3 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 font-medium cursor-pointer touch-manipulation flex items-center gap-0.5"
             >
-              <ChevronLeft className="size-3" />
+              <ChevronLeft className="size-3.5" />
               <span>Prev</span>
             </button>
 
-            <div className="flex items-center gap-1">
+            {/* Desktop page pills */}
+            <div className="hidden sm:flex items-center gap-1">
               {pageNumbers.map((page, idx) =>
                 typeof page === "number" ? (
                   <button
+                    type="button"
                     key={idx}
                     onClick={() => setCurrentPage(page)}
-                    className={`min-w-7 h-7 px-2 rounded text-[11px] font-medium transition-colors ${
+                    className={`min-w-7 h-7 px-2 rounded text-[11px] font-medium transition-colors cursor-pointer touch-manipulation ${
                       safePage === page
                         ? "bg-slate-900 text-white"
                         : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-100"
@@ -822,18 +1007,25 @@ export default function VectorIntelPage() {
               )}
             </div>
 
+            {/* Mobile current page indicator */}
+            <span className="sm:hidden px-2 font-semibold text-slate-800 text-xs">
+              Page {safePage} of {totalPages}
+            </span>
+
             <button
+              type="button"
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage === totalPages}
-              className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-[11px] font-medium flex items-center gap-0.5"
+              className="px-3 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 font-medium cursor-pointer touch-manipulation flex items-center gap-0.5"
             >
               <span>Next</span>
-              <ChevronRight className="size-3" />
+              <ChevronRight className="size-3.5" />
             </button>
             <button
+              type="button"
               onClick={() => setCurrentPage(totalPages)}
               disabled={safePage === totalPages}
-              className="px-2 py-1 rounded border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600 text-[11px] font-medium"
+              className="px-2 py-1.5 rounded-md border border-slate-200 bg-white hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed text-slate-700 font-medium cursor-pointer touch-manipulation"
             >
               Last
             </button>

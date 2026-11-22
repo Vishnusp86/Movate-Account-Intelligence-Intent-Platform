@@ -42,4 +42,5 @@ next-env.d.ts
 
 # office temp lock files
 ~$*
+scratch_dom.html
 
