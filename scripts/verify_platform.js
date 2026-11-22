@@ -17,10 +17,10 @@ console.log("[✓] Canonical Database loaded successfully.")
 
 // 2. Counts and Integrity
 console.log("\n--- Master Dataset Row Counts & Classification ---")
-console.log(`Total Canonical Accounts: ${db.accounts.length} (Expected: 235)`)
+console.log(`Total Canonical Accounts: ${db.accounts.length} (Expected: 319)`)
 console.log(`Total Target Accounts: ${db.accounts.filter(a => a.is_target).length} (Expected: 88 unique domains)`)
-console.log(`Total Existing Clients: ${db.accounts.filter(a => a.is_client).length} (Expected: 200 unique domains)`)
-console.log(`Total Vector Engaged Accounts: ${db.accounts.filter(a => a.has_vector_visitors).length} (Expected: 235)`)
+console.log(`Total Existing Clients: ${db.accounts.filter(a => a.is_client).length} (Expected: 284 client engagements)`)
+console.log(`Total Vector Engaged Accounts: ${db.accounts.filter(a => a.has_vector_visitors).length}`)
 console.log(`Total Vector Identified Visitors: ${db.visitors.length} (Expected: 2,044)`)
 console.log(`Total Key Senior Decision-Makers: ${db.key_visitors.length} (Expected: 480)`)
 console.log(`Total Matched Contacts: ${db.matched_contacts.length} (Expected: 113)`)

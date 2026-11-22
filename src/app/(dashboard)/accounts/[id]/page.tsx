@@ -6,8 +6,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/com
 import { Badge } from "@/components/ui/badge"
 
 export function generateStaticParams() {
-  return dbData.accounts.map((account) => ({
-    id: account.domain,
+  const domains = Array.from(new Set(dbData.accounts.map((account) => account.domain)))
+  return domains.map((domain) => ({
+    id: domain,
   }))
 }
 import {

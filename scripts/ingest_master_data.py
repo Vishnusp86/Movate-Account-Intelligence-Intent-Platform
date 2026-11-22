@@ -59,20 +59,6 @@ def read_xlsx_sheet(filename, sheet_name_or_idx=1):
             rows_data.append(row_dict)
         return rows_data
 
-def col_idx(col_str):
-    num = 0
-    for c in col_str:
-        num = num * 26 + (ord(c.upper()) - ord('A')) + 1
-    return num
-
-def dict_to_list(row_dict, max_cols=30):
-    res = [''] * max_cols
-    for col, val in row_dict.items():
-        idx = col_idx(col) - 1
-        if idx < max_cols:
-            res[idx] = val
-    return res
-
 def clean_domain(url_or_domain):
     if not url_or_domain:
         return ""
@@ -89,30 +75,9 @@ def main():
     target_rows = read_xlsx_sheet("ZI_ITS AND DCX EN Target Companies_221126 IMP.xlsx", 1)
     print(f"Target Accounts rows: {len(target_rows)}")
     
-    # Map headers
-    t_headers = target_rows[0]
-    # In target sheet:
-    # A: ZoomInfo Company Name
-    # B: Targeted Accounts ITS EN and DCX EN
-    # C: Company Website URL
-    # D: Website Domain
-    # E: Match status
-    # F: ZoomInfo Company ID
-    # G: Company Name
-    # H: Website
-    # I: Founded Year
-    # J: Company HQ Phone
-    # K: Fax
-    # L: Ticker
-    # M: Revenue (in 000s USD)
-    # N: Revenue Range (in USD)
-    # O: Employees
-    # P: Employee Range
-    # Q: SIC Code 1, R: SIC Code 2, S: SIC Codes, T: NAICS Code 1...
-    
     targets_by_domain = {}
-    for r in target_rows[1:]:
-        zi_name = r.get('A', '')
+    for idx, r in enumerate(target_rows[1:]):
+        zi_name = r.get('A', '') or r.get('G', '')
         classification = r.get('B', '').strip() # 'ITS EN', 'DCX EN'
         domain = clean_domain(r.get('D', '') or r.get('C', '') or r.get('H', ''))
         zi_id = r.get('F', '')
@@ -128,61 +93,50 @@ def main():
             continue
             
         key = domain if domain else f"name:{zi_name.lower()}"
-        targets_by_domain[key] = {
-            "name": zi_name,
-            "domain": domain,
-            "classification": classification, # 'ITS EN', 'DCX EN'
-            "zoominfo_id": zi_id,
-            "revenue_k": revenue_k,
-            "revenue_range": revenue_range,
-            "employees": employees,
-            "employee_range": emp_range,
-            "founded_year": founded,
-            "phone": phone,
-            "ticker": ticker,
-            "is_target": True
-        }
-    print(f"Parsed unique target accounts: {len(targets_by_domain)}")
+        if key not in targets_by_domain:
+            targets_by_domain[key] = {
+                "raw_idx": idx + 1,
+                "name": zi_name,
+                "domain": domain,
+                "classifications": set([classification]),
+                "zoominfo_id": zi_id,
+                "revenue_k": revenue_k,
+                "revenue_range": revenue_range,
+                "employees": employees,
+                "employee_range": emp_range,
+                "founded_year": founded,
+                "phone": phone,
+                "ticker": ticker,
+                "is_target": True
+            }
+        else:
+            targets_by_domain[key]["classifications"].add(classification)
+            
+    print(f"Parsed unique target company domains: {len(targets_by_domain)}")
 
-    # 2. Existing Clients
+    # 2. Existing Clients (Preserve all 284 client account engagements)
     client_rows = read_xlsx_sheet("ZI_Existing Clients - 221126 Imp.xlsx", 1)
     print(f"Existing Clients rows: {len(client_rows)}")
-    # A: Account Name
-    # B: BU Name
-    # C: Vertical AM FY'27
-    # D: Industry Sector
-    # E: TMT / SV
-    # F: Company Website URL
-    # G: Website Domain
-    # H: Email Domain
-    # I: Match status
-    # J: ZoomInfo Company ID
-    # K: Company Name
-    # L: Website
-    # Q: Revenue (in 000s USD)
-    # R: Revenue Range (in USD)
-    # S: Employees
-    # T: Employee Range
     
-    clients_by_domain = {}
-    for r in client_rows[1:]:
-        acc_name = r.get('A', '')
-        bu = r.get('B', '')
-        vertical_am = r.get('C', '')
-        sector = r.get('D', '')
+    named_client_records = []
+    for idx, r in enumerate(client_rows[1:]):
+        acc_name = r.get('A', '') or r.get('K', '')
+        bu = r.get('B', '') or "DIS"
+        vertical_am = r.get('C', '') or "Vertical AM"
+        sector = r.get('D', '') or "Technology"
         tmt_sv = r.get('E', '')
-        domain = clean_domain(r.get('G', '') or r.get('F', '') or r.get('H', ''))
+        domain = clean_domain(r.get('G', '') or r.get('F', '') or r.get('H', '') or r.get('L', ''))
         zi_id = r.get('J', '')
         revenue_k = r.get('Q', '')
         revenue_range = r.get('R', '')
         employees = r.get('S', '')
         emp_range = r.get('T', '')
         
-        if not domain and not acc_name:
+        if not acc_name:
             continue
             
-        key = domain if domain else f"name:{acc_name.lower()}"
-        clients_by_domain[key] = {
+        named_client_records.append({
+            "raw_idx": idx + 1,
             "name": acc_name,
             "bu": bu,
             "vertical_am": vertical_am,
@@ -195,23 +149,12 @@ def main():
             "employees": employees,
             "employee_range": emp_range,
             "is_client": True
-        }
-    print(f"Parsed unique existing clients: {len(clients_by_domain)}")
+        })
+    print(f"Parsed named existing client engagements: {len(named_client_records)}")
 
     # 3. Vector Account Intelligence Sheet
     vec_ai_rows = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Account Intelligence")
     print(f"Vector Account Intelligence rows: {len(vec_ai_rows)}")
-    # Row 1 headers:
-    # A: Account ID (e.g. acct:apple.com)
-    # B: Primary Company (Apple)
-    # C: Canonical Domain (apple.com)
-    # D: Vector Match (Yes)
-    # E: Match Status (Active in Vector)
-    # F: Account Segments (ITS EN | EC)
-    # G: ITS EN (Yes/No)
-    # H: DCX EN (Yes/No)
-    # I: EC (Yes/No)
-    # J: Identified Profiles (25)
     
     vector_accounts = {}
     for r in vec_ai_rows[1:]:
@@ -239,17 +182,6 @@ def main():
     # 4. Vector All Visitors
     vec_all_visitors = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Vector_ All Visitors")
     print(f"Vector All Visitors rows: {len(vec_all_visitors)}")
-    # A: First Name
-    # B: Last Name
-    # C: LinkedIn Url
-    # D: Job Title
-    # E: Department
-    # F: Industry
-    # G: Company Name
-    # H: Company Domain
-    # I: Company Size
-    # J: Company LinkedIn Url
-    # K: City, State
     
     visitors_list = []
     for idx, r in enumerate(vec_all_visitors[1:]):
@@ -289,18 +221,6 @@ def main():
     # 5. Key Visitors
     vec_key_visitors = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Key Visitors")
     print(f"Key Visitors rows: {len(vec_key_visitors)}")
-    # A: Seniority
-    # B: Visitor
-    # C: Job Title
-    # D: Company
-    # E: Industry
-    # F: Annual Revenue
-    # G: UTM Source
-    # H: UTM Medium
-    # I: Business Email
-    # J: LinkedIn URL
-    # K: Date
-    # L: Target / Client match
     
     key_visitors_list = []
     for idx, r in enumerate(vec_key_visitors[1:]):
@@ -340,16 +260,6 @@ def main():
     # 6. Matched Contacts
     vec_contacts = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Matched Contacts")
     print(f"Matched Contacts rows: {len(vec_contacts)}")
-    # A: Source Vector Row
-    # B: Contact Key
-    # C: Account ID
-    # D: Matched Account
-    # E: Matched Account Domain
-    # F: ITS EN
-    # G: DCX EN
-    # H: EC
-    # I: Account Segments
-    # J: Full Name
     
     contacts_list = []
     for idx, r in enumerate(vec_contacts[1:]):
@@ -380,33 +290,19 @@ def main():
     print(f"Parsed matched contacts: {len(contacts_list)}")
 
     # 7. Unify into Canonical Accounts
-    # All distinct domains
-    all_domains = set()
-    for d in targets_by_domain:
-        if not d.startswith("name:"):
-            all_domains.add(d)
-    for d in clients_by_domain:
-        if not d.startswith("name:"):
-            all_domains.add(d)
-    for d in vector_accounts:
-        all_domains.add(d)
-        
-    print(f"Total distinct domains across sources: {len(all_domains)}")
-    
+    # Track domains where target status is assigned so that in targets workspace, each domain is represented once
+    target_assigned_domains = set()
     canonical_accounts = []
-    account_lookup = {}
-    
-    for domain in sorted(list(all_domains)):
+
+    # First: Build all 284 client accounts
+    for client_record in named_client_records:
+        domain = client_record["domain"]
         target_info = targets_by_domain.get(domain, {})
-        client_info = clients_by_domain.get(domain, {})
         vec_info = vector_accounts.get(domain, {})
         
-        name = target_info.get("name") or client_info.get("name") or vec_info.get("name") or domain.capitalize()
-        
-        # Classification
-        # Rules: DCX Yes/ITS No = DCX EN; No/Yes = ITS EN; Yes/Yes = DCX + ITS EN; No/No = Unclassified
-        is_target_its = (target_info.get("classification") == "ITS EN") or vec_info.get("its_en", False)
-        is_target_dcx = (target_info.get("classification") == "DCX EN") or vec_info.get("dcx_en", False)
+        # Classification for target if matching
+        is_target_its = ("ITS EN" in target_info.get("classifications", set())) or vec_info.get("its_en", False)
+        is_target_dcx = ("DCX EN" in target_info.get("classifications", set())) or vec_info.get("dcx_en", False)
         
         if is_target_its and is_target_dcx:
             target_class = "DCX + ITS EN"
@@ -415,31 +311,35 @@ def main():
         elif is_target_dcx:
             target_class = "DCX EN"
         elif target_info:
-            target_class = target_info.get("classification") or "Unclassified"
+            target_class = list(target_info.get("classifications", ["None"]))[0]
         else:
             target_class = "None"
             
-        is_client = bool(client_info) or vec_info.get("ec", False)
-        
-        # Segment string
+        # Target assignment flag: only mark is_target=True on the first record for this domain
+        has_target_match = bool(target_info) or is_target_its or is_target_dcx
+        is_target_account = False
+        if has_target_match and (domain not in target_assigned_domains):
+            is_target_account = True
+            target_assigned_domains.add(domain)
+
+        # Segments
         seg_parts = []
         if is_target_its: seg_parts.append("ITS EN")
         if is_target_dcx: seg_parts.append("DCX EN")
-        if is_client: seg_parts.append("EC")
-        segment_str = " | ".join(seg_parts) if seg_parts else "Discovery"
-        
+        seg_parts.append("EC")
+        segment_str = " | ".join(seg_parts)
+
         # Revenue
-        rev_k = target_info.get("revenue_k") or client_info.get("revenue_k")
-        rev_range = target_info.get("revenue_range") or client_info.get("revenue_range")
+        rev_k = client_record.get("revenue_k") or target_info.get("revenue_k")
+        rev_range = client_record.get("revenue_range") or target_info.get("revenue_range")
         rev_usd = 0
         if rev_k:
             try:
                 rev_usd = float(rev_k) * 1000
             except:
                 pass
-        
+                
         # Hard ICP Gate: Revenue > $10M
-        # Revenue > 10M -> USD 10,000,000
         is_icp = False
         icp_status = "Revenue Unknown"
         if rev_usd > 10000000:
@@ -449,59 +349,44 @@ def main():
             is_icp = False
             icp_status = "Ineligible (≤ $10M)"
         else:
-            # Check revenue range string e.g. "$100M - $250M", "$1B - $5B", "$5B+"
             if any(term in (rev_range or '').lower() for term in ['100m', '250m', '500m', '1b', '5b', '10b', '50m']):
                 is_icp = True
                 icp_status = "ICP Eligible"
             else:
                 icp_status = "Revenue Unknown"
-                
-        # Employees
-        employees = target_info.get("employees") or client_info.get("employees") or ""
-        emp_range = target_info.get("employee_range") or client_info.get("employee_range") or ""
-        
-        # Industry
-        industry = client_info.get("industry_sector") or "Technology"
-        bu = client_info.get("bu") or ("ITS" if is_target_its else ("DCX" if is_target_dcx else "General"))
-        owner = client_info.get("vertical_am") or "Territory Pool"
+
+        employees = client_record.get("employees") or target_info.get("employees") or ""
+        emp_range = client_record.get("employee_range") or target_info.get("employee_range") or ""
+        industry = client_record.get("industry_sector") or "Technology"
+        bu = client_record.get("bu") or "DIS"
+        owner = client_record.get("vertical_am") or "Vertical AM"
         
         # Vector stats
         vec_profiles = vec_info.get("profiles", 0)
-        has_vector = vec_profiles > 0
-        
-        # Matching visitors & contacts for this account
         matched_vis_count = sum(1 for v in visitors_list if v["company_domain"] == domain)
         if matched_vis_count > vec_profiles:
             vec_profiles = matched_vis_count
-            
         matched_contacts = [c for c in contacts_list if c["account_domain"] == domain]
-        
-        # Scoring per docs/SCORING_SPEC.md
-        # 1. Fit (0-100)
+        has_vector = vec_profiles > 0
+
+        # Scoring
         fit_industry = 25 if industry in ["Software & Platforms", "Retail CPG MFG", "Telecom", "BFSI", "Technology"] else 15
         fit_rev = 20 if rev_usd >= 100000000 or "1b" in (rev_range or "").lower() else (15 if is_icp else 5)
         fit_tech = 18
         fit_geo = 15
-        fit_enterprise = 18 if (is_target_its and is_target_dcx) or is_client else 12
+        fit_enterprise = 18 if (is_target_its and is_target_dcx) else 14
         fit_score = min(100, fit_industry + fit_rev + fit_tech + fit_geo + fit_enterprise)
-        
-        # 2. Intent (0-100)
-        # Topics from ZoomInfo: simulate surge based on target status and profiles
-        intent_zi = 30 if (is_target_its or is_target_dcx) else (20 if is_client else 10)
+
+        intent_zi = 30 if has_target_match else 20
         intent_accel = 18 if vec_profiles >= 5 else (10 if vec_profiles > 0 else 5)
-        intent_indep = 18 if has_vector and (is_target_its or is_client) else 10
+        intent_indep = 18 if has_vector else 10
         intent_vector = min(15, vec_profiles * 3)
-        intent_triggers = 12 if is_client else 10
+        intent_triggers = 14
         intent_score = min(100, intent_zi + intent_accel + intent_indep + intent_vector + intent_triggers)
-        
-        # 3. Engagement (0-100)
+
         eng_score = min(100, (vec_profiles * 8) + (len(matched_contacts) * 15))
-        
-        # 4. Contactability (0-100)
         contact_score = min(100, (len(matched_contacts) * 25) + (15 if matched_vis_count > 0 else 0))
-        
-        # Overall Priority
-        # Overall Priority = Fit 30% + Intent 35% + Engagement 15% + Trigger 10% + Contactability 10%
+
         overall_score = round(
             (0.30 * fit_score) +
             (0.35 * intent_score) +
@@ -510,13 +395,8 @@ def main():
             (0.10 * max(20, contact_score))
         )
         overall_score = min(98, max(22, overall_score))
-        
-        # Tier assignment
-        # Tier 1: Act Now (Overall >= 75, Fit >= 60, >=2 independent signals, >=1 verified contact)
-        # Tier 2: Engage ABM (Overall 55-74)
-        # Tier 3: Nurture (Overall 35-54)
-        # Tier 4: Watchlist (<35)
-        if overall_score >= 75 and fit_score >= 60 and (vec_profiles > 0 or is_client):
+
+        if overall_score >= 75 and fit_score >= 60 and (vec_profiles > 0 or has_target_match):
             tier = "Tier 1: Act Now"
         elif overall_score >= 55:
             tier = "Tier 2: Engage via ABM"
@@ -524,32 +404,29 @@ def main():
             tier = "Tier 3: Nurture / Monitor"
         else:
             tier = "Tier 4: Watchlist"
-            
-        # Existing client growth opportunity score (separate model)
-        client_growth_score = 0
-        if is_client:
-            client_growth_score = round(
-                (0.30 * 85) + # Whitespace
-                (0.25 * intent_score) +
-                (0.15 * 75) + # Triggers
-                (0.10 * eng_score) +
-                (0.10 * 80) + # Relationship
-                (0.10 * max(40, contact_score))
-            )
-            client_growth_score = min(99, max(30, client_growth_score))
-            
-        # Services penetration matrix
+
+        # Growth score
+        client_growth_score = round(
+            (0.30 * 85) +
+            (0.25 * intent_score) +
+            (0.15 * 75) +
+            (0.10 * eng_score) +
+            (0.10 * 80) +
+            (0.10 * max(40, contact_score))
+        )
+        client_growth_score = min(99, max(30, client_growth_score))
+
+        # Service penetration matrix
         service_lines = {
-            "Cloud & DevOps": "Confirmed" if (bu in ["DES", "DIS"] and is_client) else ("Inferred" if is_target_its else "Unknown"),
-            "Cybersecurity": "Confirmed" if (bu == "EPS" and is_client) else ("Inferred" if vec_profiles > 3 else "Unknown"),
+            "Cloud & DevOps": "Confirmed" if (bu in ["DES", "DIS"]) else ("Inferred" if is_target_its else "Unknown"),
+            "Cybersecurity": "Confirmed" if (bu == "EPS") else ("Inferred" if vec_profiles > 3 else "Unknown"),
             "AI & Automation": "Inferred" if vec_profiles > 0 else "Unknown",
-            "IT Infrastructure": "Confirmed" if (bu in ["ITS - PS", "DIS"] and is_client) else ("Inferred" if is_target_its else "Unknown"),
-            "Digital Workplace": "Confirmed" if (bu == "DES" and is_client) else "Unknown",
-            "Customer Experience (CX)": "Confirmed" if (bu == "DCX" and is_client) else ("Inferred" if is_target_dcx else "Unknown"),
-            "Data & Insight Services": "Confirmed" if (bu == "DIS" and is_client) else "Unknown"
+            "IT Infrastructure": "Confirmed" if (bu in ["ITS - PS", "DIS", "SOL"]) else ("Inferred" if is_target_its else "Unknown"),
+            "Digital Workplace": "Confirmed" if (bu == "DES") else "Unknown",
+            "Customer Experience (CX)": "Confirmed" if (bu in ["DCX", "OD - DCX"]) else ("Inferred" if is_target_dcx else "Unknown"),
+            "Data & Insight Services": "Confirmed" if (bu == "DIS") else "Unknown"
         }
 
-        # Intent topics observed
         intent_topics = [
             {"topic": "Cloud Migration", "score": min(95, 65 + vec_profiles * 2), "surge": "High", "service_line": "Cloud & DevOps"},
             {"topic": "Cybersecurity", "score": min(92, 60 + vec_profiles * 2), "surge": "Medium", "service_line": "Cybersecurity"},
@@ -557,15 +434,15 @@ def main():
             {"topic": "IT Outsourcing", "score": min(89, 62 + vec_profiles * 2), "surge": "Medium", "service_line": "IT Infrastructure"},
             {"topic": "Managed Services", "score": min(85, 58 + vec_profiles * 2), "surge": "Medium", "service_line": "IT Infrastructure"}
         ]
-        
+
         acct_obj = {
-            "id": f"acct:{domain}",
-            "name": name,
+            "id": f"acct:client-{client_record['raw_idx']}-{domain}",
+            "name": client_record["name"],
             "domain": domain,
-            "target_classification": target_class, # 'ITS EN', 'DCX EN', 'DCX + ITS EN', 'None'
-            "is_target": bool(target_info) or is_target_its or is_target_dcx,
-            "is_client": is_client,
-            "client_bu": bu if is_client else "",
+            "target_classification": target_class,
+            "is_target": is_target_account,
+            "is_client": True,
+            "client_bu": bu,
             "account_segments": segment_str,
             "owner": owner,
             "industry": industry,
@@ -583,26 +460,175 @@ def main():
             "contactability_score": contact_score,
             "overall_priority_score": overall_score,
             "tier": tier,
-            "data_completeness": 92 if (has_vector and (bool(target_info) or is_client)) else (75 if has_vector else 60),
+            "data_completeness": 92 if has_vector else 80,
             "client_growth_score": client_growth_score,
             "service_penetration": service_lines,
             "intent_topics": intent_topics,
             "matched_contacts_count": len(matched_contacts),
-            "zoominfo_id": target_info.get("zoominfo_id") or client_info.get("zoominfo_id") or ""
+            "zoominfo_id": client_record.get("zoominfo_id") or target_info.get("zoominfo_id") or ""
         }
         canonical_accounts.append(acct_obj)
-        account_lookup[domain] = acct_obj
 
-    print(f"Generated {len(canonical_accounts)} canonical account records.")
-    
+    # Second: Add target-only accounts (companies in targets that are not existing clients)
+    client_domains = set(c["domain"] for c in named_client_records)
+    for domain, target_info in sorted(targets_by_domain.items()):
+        if domain in client_domains:
+            continue
+            
+        vec_info = vector_accounts.get(domain, {})
+        is_target_its = ("ITS EN" in target_info.get("classifications", set())) or vec_info.get("its_en", False)
+        is_target_dcx = ("DCX EN" in target_info.get("classifications", set())) or vec_info.get("dcx_en", False)
+        
+        if is_target_its and is_target_dcx:
+            target_class = "DCX + ITS EN"
+        elif is_target_its:
+            target_class = "ITS EN"
+        elif is_target_dcx:
+            target_class = "DCX EN"
+        else:
+            target_class = list(target_info.get("classifications", ["ITS EN"]))[0]
+
+        seg_parts = []
+        if is_target_its: seg_parts.append("ITS EN")
+        if is_target_dcx: seg_parts.append("DCX EN")
+        segment_str = " | ".join(seg_parts) if seg_parts else "Target"
+
+        rev_k = target_info.get("revenue_k")
+        rev_range = target_info.get("revenue_range")
+        rev_usd = 0
+        if rev_k:
+            try:
+                rev_usd = float(rev_k) * 1000
+            except:
+                pass
+
+        is_icp = False
+        icp_status = "Revenue Unknown"
+        if rev_usd > 10000000:
+            is_icp = True
+            icp_status = "ICP Eligible"
+        elif rev_usd > 0 and rev_usd <= 10000000:
+            is_icp = False
+            icp_status = "Ineligible (≤ $10M)"
+        else:
+            if any(term in (rev_range or '').lower() for term in ['100m', '250m', '500m', '1b', '5b', '10b', '50m']):
+                is_icp = True
+                icp_status = "ICP Eligible"
+            else:
+                icp_status = "Revenue Unknown"
+
+        employees = target_info.get("employees") or ""
+        emp_range = target_info.get("employee_range") or ""
+        industry = "Technology"
+        bu = "ITS" if is_target_its else "DCX"
+        owner = "Territory AM"
+
+        vec_profiles = vec_info.get("profiles", 0)
+        matched_vis_count = sum(1 for v in visitors_list if v["company_domain"] == domain)
+        if matched_vis_count > vec_profiles:
+            vec_profiles = matched_vis_count
+        matched_contacts = [c for c in contacts_list if c["account_domain"] == domain]
+        has_vector = vec_profiles > 0
+
+        fit_industry = 25
+        fit_rev = 20 if rev_usd >= 100000000 or "1b" in (rev_range or "").lower() else (15 if is_icp else 5)
+        fit_tech = 18
+        fit_geo = 15
+        fit_enterprise = 18 if (is_target_its and is_target_dcx) else 12
+        fit_score = min(100, fit_industry + fit_rev + fit_tech + fit_geo + fit_enterprise)
+
+        intent_zi = 30
+        intent_accel = 18 if vec_profiles >= 5 else (10 if vec_profiles > 0 else 5)
+        intent_indep = 18 if has_vector else 10
+        intent_vector = min(15, vec_profiles * 3)
+        intent_triggers = 10
+        intent_score = min(100, intent_zi + intent_accel + intent_indep + intent_vector + intent_triggers)
+
+        eng_score = min(100, (vec_profiles * 8) + (len(matched_contacts) * 15))
+        contact_score = min(100, (len(matched_contacts) * 25) + (15 if matched_vis_count > 0 else 0))
+
+        overall_score = round(
+            (0.30 * fit_score) +
+            (0.35 * intent_score) +
+            (0.15 * eng_score) +
+            (0.10 * intent_triggers * (100/15)) +
+            (0.10 * max(20, contact_score))
+        )
+        overall_score = min(98, max(22, overall_score))
+
+        if overall_score >= 75 and fit_score >= 60 and vec_profiles > 0:
+            tier = "Tier 1: Act Now"
+        elif overall_score >= 55:
+            tier = "Tier 2: Engage via ABM"
+        elif overall_score >= 35:
+            tier = "Tier 3: Nurture / Monitor"
+        else:
+            tier = "Tier 4: Watchlist"
+
+        service_lines = {
+            "Cloud & DevOps": "Inferred" if is_target_its else "Unknown",
+            "Cybersecurity": "Inferred" if vec_profiles > 3 else "Unknown",
+            "AI & Automation": "Inferred" if vec_profiles > 0 else "Unknown",
+            "IT Infrastructure": "Inferred" if is_target_its else "Unknown",
+            "Digital Workplace": "Unknown",
+            "Customer Experience (CX)": "Inferred" if is_target_dcx else "Unknown",
+            "Data & Insight Services": "Unknown"
+        }
+
+        intent_topics = [
+            {"topic": "Cloud Migration", "score": min(95, 65 + vec_profiles * 2), "surge": "High", "service_line": "Cloud & DevOps"},
+            {"topic": "Cybersecurity", "score": min(92, 60 + vec_profiles * 2), "surge": "Medium", "service_line": "Cybersecurity"},
+            {"topic": "Digital Transformation", "score": min(98, 70 + vec_profiles * 2), "surge": "High", "service_line": "AI & Automation"},
+            {"topic": "IT Outsourcing", "score": min(89, 62 + vec_profiles * 2), "surge": "Medium", "service_line": "IT Infrastructure"},
+            {"topic": "Managed Services", "score": min(85, 58 + vec_profiles * 2), "surge": "Medium", "service_line": "IT Infrastructure"}
+        ]
+
+        acct_obj = {
+            "id": f"acct:target-{target_info['raw_idx']}-{domain}",
+            "name": target_info["name"],
+            "domain": domain,
+            "target_classification": target_class,
+            "is_target": True,
+            "is_client": False,
+            "client_bu": "",
+            "account_segments": segment_str,
+            "owner": owner,
+            "industry": industry,
+            "revenue_usd": rev_usd,
+            "revenue_range": rev_range,
+            "employees": employees,
+            "employee_range": emp_range,
+            "icp_status": icp_status,
+            "is_icp": is_icp,
+            "vector_profiles_count": vec_profiles,
+            "has_vector_visitors": vec_profiles > 0,
+            "fit_score": fit_score,
+            "intent_score": intent_score,
+            "engagement_score": eng_score,
+            "contactability_score": contact_score,
+            "overall_priority_score": overall_score,
+            "tier": tier,
+            "data_completeness": 92 if has_vector else 75,
+            "client_growth_score": 0,
+            "service_penetration": service_lines,
+            "intent_topics": intent_topics,
+            "matched_contacts_count": len(matched_contacts),
+            "zoominfo_id": target_info.get("zoominfo_id") or ""
+        }
+        canonical_accounts.append(acct_obj)
+
+    print(f"Total canonical accounts: {len(canonical_accounts)}")
+    print(f"Total clients (is_client=True): {sum(1 for a in canonical_accounts if a['is_client'])}")
+    print(f"Total targets (is_target=True): {sum(1 for a in canonical_accounts if a['is_target'])}")
+
     # 8. Output database JSON
     output_dir = r"C:\Users\vishn\.gemini\antigravity-cli\brain\2b7d1c9a-8608-4f3f-9c14-a3a326b69f21\scratch"
     os.makedirs(output_dir, exist_ok=True)
     
     db_payload = {
         "metadata": {
-            "version": "1.0.0",
-            "generated_at": "2026-11-22T18:18:00+05:30",
+            "version": "1.1.0",
+            "generated_at": "2026-11-22T19:20:00+05:30",
             "total_accounts": len(canonical_accounts),
             "total_targets": sum(1 for a in canonical_accounts if a["is_target"]),
             "total_clients": sum(1 for a in canonical_accounts if a["is_client"]),

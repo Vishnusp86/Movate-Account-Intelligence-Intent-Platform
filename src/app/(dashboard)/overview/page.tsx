@@ -34,7 +34,7 @@ export default function OverviewPage() {
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-slate-600 bg-white">
-            Single Canonical Store: 235 Accounts
+            Single Canonical Store: {kpis.totalAccounts} Accounts
           </Badge>
           <Badge variant="success" className="gap-1">
             <CheckCircle2 className="size-3" />
