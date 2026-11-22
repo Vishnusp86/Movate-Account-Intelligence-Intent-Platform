@@ -54,6 +54,8 @@ export interface VisitorRecord {
   company_size: string
   company_linkedin_url: string
   location: string
+  is_target_client?: boolean
+  target_client_segment?: string
 }
 
 export interface KeyVisitorRecord {
@@ -101,12 +103,38 @@ export interface TopicMatrixItem {
   substitutes: string
 }
 
+export interface AccountLevelBreakupRecord {
+  id: string
+  rank: number
+  company: string
+  domain: string
+  revenue: string
+  industry: string
+  company_size: string
+  visitors: number
+  board: number
+  c_level: number
+  vp: number
+  head: number
+  director: number
+  senior: number
+  owner: number
+  manager: number
+  ic: number
+  dcx_en: boolean
+  its_en: boolean
+  is_target: boolean
+  is_client: boolean
+  segment: string
+}
+
 const accountsList: CanonicalAccount[] = dbData.accounts as CanonicalAccount[]
 const visitorsList: VisitorRecord[] = dbData.visitors as VisitorRecord[]
 const keyVisitorsList: KeyVisitorRecord[] = dbData.key_visitors as KeyVisitorRecord[]
 const matchedContactsList: MatchedContactRecord[] = dbData.matched_contacts as MatchedContactRecord[]
 const creditGovernorData: CreditGovernorInfo = dbData.credit_governor as CreditGovernorInfo
 const topicMatrixData: TopicMatrixItem[] = dbData.intent_topics_matrix as TopicMatrixItem[]
+const accountBreakupList: AccountLevelBreakupRecord[] = ((dbData as any).account_level_breakup || []) as AccountLevelBreakupRecord[]
 
 export interface AccountFilterOptions {
   query?: string
@@ -256,4 +284,8 @@ export function getCreditGovernor() {
 
 export function getIntentTopicMatrix() {
   return topicMatrixData
+}
+
+export function getAccountLevelBreakup() {
+  return accountBreakupList
 }

@@ -24,6 +24,7 @@ console.log(`Total Vector Engaged Accounts: ${db.accounts.filter(a => a.has_vect
 console.log(`Total Vector Identified Visitors: ${db.visitors.length} (Expected: 2,044)`)
 console.log(`Total Key Senior Decision-Makers: ${db.key_visitors.length} (Expected: 480)`)
 console.log(`Total Matched Contacts: ${db.matched_contacts.length} (Expected: 113)`)
+console.log(`Total Account-Level Breakup Companies: ${db.account_level_breakup.length} (Expected: 1,741)`)
 
 if (db.visitors.length !== 2044) {
   console.error(`FAIL: Visitors count mismatch: ${db.visitors.length} != 2044`)
@@ -35,6 +36,10 @@ if (db.key_visitors.length !== 480) {
 }
 if (db.matched_contacts.length !== 113) {
   console.error(`FAIL: Matched contacts count mismatch: ${db.matched_contacts.length} != 113`)
+  process.exit(1)
+}
+if (!db.account_level_breakup || db.account_level_breakup.length !== 1741) {
+  console.error(`FAIL: Account-level breakup count mismatch: ${db.account_level_breakup?.length} != 1741`)
   process.exit(1)
 }
 console.log("[✓] All dataset counts exactly match source specifications.")

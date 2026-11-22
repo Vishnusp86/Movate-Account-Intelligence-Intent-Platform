@@ -15,68 +15,160 @@ import {
   Eye,
   CheckCircle2,
   Building,
+  Building2,
+  Trophy,
+  Target,
+  Sparkles,
+  ArrowUpRight,
+  TrendingUp,
+  Flame,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react"
 import dbData from "@/data/canonical_database.json"
+import { AccountLevelBreakupRecord } from "@/lib/db/repository"
+
+type TabType = "All" | "Key" | "TargetClient" | "AccountBreakup"
 
 export default function VectorIntelPage() {
-  const [activeTab, setActiveTab] = useState<"All" | "Key">("All")
+  const [activeTab, setActiveTab] = useState<TabType>("All")
   const [searchQuery, setSearchQuery] = useState("")
   const [seniorityFilter, setSeniorityFilter] = useState("All")
+  const [targetClientFilter, setTargetClientFilter] = useState("All")
+  const [breakupFilter, setBreakupFilter] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
 
-  const allVisitors = dbData.visitors
-  const keyVisitors = dbData.key_visitors
+  const allVisitors = dbData.visitors as any[]
+  const keyVisitors = dbData.key_visitors as any[]
+  const accountBreakup = ((dbData as any).account_level_breakup || []) as AccountLevelBreakupRecord[]
 
-  // Reset page when filters change
+  // All visitors from ITS EN, DCX EN target accounts and Existing Client accounts
+  const targetClientVisitors = useMemo(() => {
+    return allVisitors.filter((v) => v.is_target_client)
+  }, [allVisitors])
+
+  // Counts for Target/Client tab chips
+  const tcCounts = useMemo(() => {
+    return {
+      all: targetClientVisitors.length,
+      its: targetClientVisitors.filter((v) => v.target_client_segment?.includes("ITS EN")).length,
+      dcx: targetClientVisitors.filter((v) => v.target_client_segment?.includes("DCX EN")).length,
+      ec: targetClientVisitors.filter((v) => v.target_client_segment?.includes("EC")).length,
+    }
+  }, [targetClientVisitors])
+
+  // Counts for Account Breakup tab chips
+  const breakupCounts = useMemo(() => {
+    return {
+      all: accountBreakup.length,
+      targets: accountBreakup.filter((c) => c.is_target).length,
+      clients: accountBreakup.filter((c) => c.is_client).length,
+      highIntent: accountBreakup.filter((c) => c.visitors >= 5).length,
+    }
+  }, [accountBreakup])
+
+  // Reset page when any filter or tab changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, searchQuery, seniorityFilter, pageSize])
+  }, [activeTab, searchQuery, seniorityFilter, targetClientFilter, breakupFilter, pageSize])
 
-  const filteredVisitors = useMemo(() => {
+  // Filtered dataset according to active tab
+  const filteredData = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim()
+
     if (activeTab === "Key") {
       let list = keyVisitors
       if (seniorityFilter !== "All") {
-        list = list.filter((v) => v.seniority.toLowerCase().includes(seniorityFilter.toLowerCase()))
+        list = list.filter((v) => v.seniority?.toLowerCase().includes(seniorityFilter.toLowerCase()))
       }
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim()
+      if (q) {
         list = list.filter(
           (v) =>
-            v.name.toLowerCase().includes(q) ||
-            v.company.toLowerCase().includes(q) ||
-            v.title.toLowerCase().includes(q)
+            v.name?.toLowerCase().includes(q) ||
+            v.company?.toLowerCase().includes(q) ||
+            v.title?.toLowerCase().includes(q)
         )
       }
       return list
     }
 
+    if (activeTab === "TargetClient") {
+      let list = targetClientVisitors
+      if (targetClientFilter === "ITS EN") {
+        list = list.filter((v) => v.target_client_segment?.includes("ITS EN"))
+      } else if (targetClientFilter === "DCX EN") {
+        list = list.filter((v) => v.target_client_segment?.includes("DCX EN"))
+      } else if (targetClientFilter === "EC") {
+        list = list.filter((v) => v.target_client_segment?.includes("EC"))
+      }
+      if (q) {
+        list = list.filter(
+          (v) =>
+            v.name?.toLowerCase().includes(q) ||
+            v.company_name?.toLowerCase().includes(q) ||
+            v.company_domain?.toLowerCase().includes(q) ||
+            v.title?.toLowerCase().includes(q) ||
+            v.department?.toLowerCase().includes(q)
+        )
+      }
+      return list
+    }
+
+    if (activeTab === "AccountBreakup") {
+      let list = accountBreakup
+      if (breakupFilter === "Targets") {
+        list = list.filter((c) => c.is_target)
+      } else if (breakupFilter === "Clients") {
+        list = list.filter((c) => c.is_client)
+      } else if (breakupFilter === "HighIntent") {
+        list = list.filter((c) => c.visitors >= 5)
+      }
+      if (q) {
+        list = list.filter(
+          (c) =>
+            c.company?.toLowerCase().includes(q) ||
+            c.domain?.toLowerCase().includes(q) ||
+            c.industry?.toLowerCase().includes(q)
+        )
+      }
+      return list
+    }
+
+    // Default: "All"
     let list = allVisitors
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim()
+    if (q) {
       list = list.filter(
         (v) =>
-          v.name.toLowerCase().includes(q) ||
-          v.company_name.toLowerCase().includes(q) ||
-          v.company_domain.toLowerCase().includes(q) ||
-          v.title.toLowerCase().includes(q) ||
-          v.department.toLowerCase().includes(q)
+          v.name?.toLowerCase().includes(q) ||
+          v.company_name?.toLowerCase().includes(q) ||
+          v.company_domain?.toLowerCase().includes(q) ||
+          v.title?.toLowerCase().includes(q) ||
+          v.department?.toLowerCase().includes(q)
       )
     }
     return list
-  }, [activeTab, allVisitors, keyVisitors, searchQuery, seniorityFilter])
+  }, [
+    activeTab,
+    allVisitors,
+    keyVisitors,
+    targetClientVisitors,
+    accountBreakup,
+    searchQuery,
+    seniorityFilter,
+    targetClientFilter,
+    breakupFilter,
+  ])
 
   // Pagination calculations
-  const totalItems = filteredVisitors.length
+  const totalItems = filteredData.length
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize))
   const safePage = Math.min(currentPage, totalPages)
   const startIndex = totalItems === 0 ? 0 : (safePage - 1) * pageSize
   const endIndex = Math.min(startIndex + pageSize, totalItems)
-  const paginatedVisitors = filteredVisitors.slice(startIndex, endIndex)
+  const paginatedItems = filteredData.slice(startIndex, endIndex)
 
   // Smart page number pill generator
   const pageNumbers = useMemo(() => {
@@ -97,7 +189,7 @@ export default function VectorIntelPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200">
         <div>
           <div className="flex items-center gap-2">
@@ -109,7 +201,7 @@ export default function VectorIntelPage() {
             </Badge>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            2,044 identified B2B website visitors matched against target enterprise accounts and existing clients.
+            2,044 identified B2B website visitors across 1,741 companies, matched to ITS EN, DCX EN target accounts and Existing Clients.
           </p>
         </div>
 
@@ -122,56 +214,136 @@ export default function VectorIntelPage() {
         </div>
       </div>
 
-      {/* Tabs & Search */}
+      {/* Primary 4 Navigation Tabs */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-medium text-slate-600">
+        <div className="inline-flex rounded-lg bg-slate-100 p-1 text-xs font-medium text-slate-600 max-w-full overflow-x-auto">
+          {/* Tab 1: All Visitors */}
           <button
             onClick={() => setActiveTab("All")}
-            className={`px-3 py-1.5 rounded-md transition-all ${
+            className={`px-3 py-1.5 rounded-md transition-all whitespace-nowrap ${
               activeTab === "All" ? "bg-white text-slate-900 shadow-xs font-semibold" : "hover:text-slate-900"
             }`}
           >
             All Identified Visitors ({allVisitors.length})
           </button>
+
+          {/* Tab 2: Key Decision-Makers */}
           <button
             onClick={() => setActiveTab("Key")}
-            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
               activeTab === "Key" ? "bg-white text-teal-800 shadow-xs font-semibold" : "hover:text-slate-900"
             }`}
           >
             <Shield className="size-3.5 text-teal-600" />
             <span>Key Decision-Makers ({keyVisitors.length})</span>
           </button>
+
+          {/* Tab 3: Target & Client Visitors */}
+          <button
+            onClick={() => setActiveTab("TargetClient")}
+            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === "TargetClient" ? "bg-white text-blue-800 shadow-xs font-semibold" : "hover:text-slate-900"
+            }`}
+          >
+            <Target className="size-3.5 text-blue-600" />
+            <span>Target &amp; Client Visitors ({targetClientVisitors.length})</span>
+          </button>
+
+          {/* Tab 4: Account-Level Breakup */}
+          <button
+            onClick={() => setActiveTab("AccountBreakup")}
+            className={`px-3 py-1.5 rounded-md transition-all flex items-center gap-1.5 whitespace-nowrap ${
+              activeTab === "AccountBreakup" ? "bg-white text-emerald-800 shadow-xs font-semibold" : "hover:text-slate-900"
+            }`}
+          >
+            <Trophy className="size-3.5 text-amber-500" />
+            <span>Account-Level Breakup ({accountBreakup.length})</span>
+          </button>
         </div>
 
-        {activeTab === "Key" && (
-          <div className="flex items-center gap-1 text-xs">
-            {["All", "C-Level", "VP", "Director", "Board"].map((s) => (
-              <button
-                key={s}
-                onClick={() => setSeniorityFilter(s)}
-                className={`px-2.5 py-1 rounded border text-[11px] ${
-                  seniorityFilter === s
-                    ? "bg-slate-900 text-white border-slate-900"
-                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
-                }`}
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-
+        {/* Global Search Bar */}
         <div className="relative w-full sm:w-72">
           <Search className="size-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search visitor, title, company..."
+            placeholder={
+              activeTab === "AccountBreakup"
+                ? "Search company, domain, industry..."
+                : "Search visitor, title, company..."
+            }
             className="pl-8 text-xs h-8.5 bg-white"
           />
         </div>
       </div>
+
+      {/* Secondary Filter Chips for Active Tab */}
+      {activeTab === "Key" && (
+        <div className="flex items-center gap-1.5 text-xs">
+          <span className="text-slate-400 text-[11px] mr-1">Seniority Level:</span>
+          {["All", "C-Level", "VP", "Director", "Board"].map((s) => (
+            <button
+              key={s}
+              onClick={() => setSeniorityFilter(s)}
+              className={`px-2.5 py-1 rounded border text-[11px] font-medium transition-colors ${
+                seniorityFilter === s
+                  ? "bg-slate-900 text-white border-slate-900"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "TargetClient" && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-slate-400 text-[11px] mr-1">Segment Filter:</span>
+          {[
+            { label: "All Matched", key: "All", count: tcCounts.all },
+            { label: "ITS EN Targets", key: "ITS EN", count: tcCounts.its },
+            { label: "DCX EN Targets", key: "DCX EN", count: tcCounts.dcx },
+            { label: "Existing Clients (EC)", key: "EC", count: tcCounts.ec },
+          ].map((chip) => (
+            <button
+              key={chip.key}
+              onClick={() => setTargetClientFilter(chip.key)}
+              className={`px-2.5 py-1 rounded border text-[11px] font-medium transition-colors ${
+                targetClientFilter === chip.key
+                  ? "bg-blue-900 text-white border-blue-900"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {chip.label} ({chip.count})
+            </button>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "AccountBreakup" && (
+        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+          <span className="text-slate-400 text-[11px] mr-1">Account Filter:</span>
+          {[
+            { label: "All Ranked Companies", key: "All", count: breakupCounts.all },
+            { label: "Target Accounts (ITS & DCX EN)", key: "Targets", count: breakupCounts.targets },
+            { label: "Existing Clients (EC)", key: "Clients", count: breakupCounts.clients },
+            { label: "High Volume (≥ 5 Visits)", key: "HighIntent", count: breakupCounts.highIntent },
+          ].map((chip) => (
+            <button
+              key={chip.key}
+              onClick={() => setBreakupFilter(chip.key)}
+              className={`px-2.5 py-1 rounded border text-[11px] font-medium transition-colors ${
+                breakupFilter === chip.key
+                  ? "bg-emerald-900 text-white border-emerald-900"
+                  : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+              }`}
+            >
+              {chip.label} ({chip.count})
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Top Pagination & Range Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-600 px-1">
@@ -179,7 +351,12 @@ export default function VectorIntelPage() {
           <span>
             Showing <strong className="text-slate-900">{totalItems === 0 ? 0 : startIndex + 1}</strong> to{" "}
             <strong className="text-slate-900">{endIndex}</strong> of{" "}
-            <strong className="text-slate-900">{totalItems.toLocaleString()}</strong> {activeTab === "Key" ? "decision-makers" : "visitors"}
+            <strong className="text-slate-900">{totalItems.toLocaleString()}</strong>{" "}
+            {activeTab === "AccountBreakup"
+              ? "companies (ranked most visited to least)"
+              : activeTab === "Key"
+              ? "decision-makers"
+              : "visitors"}
           </span>
           {searchQuery && (
             <Badge variant="outline" className="text-[10px]">
@@ -245,30 +422,31 @@ export default function VectorIntelPage() {
         </div>
       </div>
 
-      {/* Visitors Table */}
+      {/* Main Data Display Card */}
       <Card className="p-0 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          {activeTab === "All" ? (
+          {/* VIEW 1: All Identified Visitors */}
+          {activeTab === "All" && (
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
                 <tr>
                   <th className="py-3 px-4">Visitor Name</th>
-                  <th className="py-3 px-3">Job Title & Department</th>
-                  <th className="py-3 px-3">Company & Domain</th>
+                  <th className="py-3 px-3">Job Title &amp; Department</th>
+                  <th className="py-3 px-3">Company &amp; Domain</th>
                   <th className="py-3 px-3">Industry / Size</th>
                   <th className="py-3 px-3">Location</th>
                   <th className="py-3 px-4 text-right">LinkedIn</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {paginatedVisitors.length === 0 ? (
+                {paginatedItems.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-8 text-center text-slate-400">
                       No visitors match your search filter.
                     </td>
                   </tr>
                 ) : (
-                  paginatedVisitors.map((v: any) => (
+                  paginatedItems.map((v: any) => (
                     <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4 font-semibold text-slate-900">{v.name}</td>
                       <td className="py-3 px-3">
@@ -309,7 +487,10 @@ export default function VectorIntelPage() {
                 )}
               </tbody>
             </table>
-          ) : (
+          )}
+
+          {/* VIEW 2: Key Decision-Makers */}
+          {activeTab === "Key" && (
             <table className="w-full text-xs text-left">
               <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
                 <tr>
@@ -323,14 +504,14 @@ export default function VectorIntelPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {paginatedVisitors.length === 0 ? (
+                {paginatedItems.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-8 text-center text-slate-400">
                       No key decision-makers match your filter.
                     </td>
                   </tr>
                 ) : (
-                  paginatedVisitors.map((v: any) => (
+                  paginatedItems.map((v: any) => (
                     <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4">
                         <Badge
@@ -364,6 +545,227 @@ export default function VectorIntelPage() {
                             Prospect
                           </Badge>
                         )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* VIEW 3: Target & Client Visitors (ITS EN, DCX EN & EC) */}
+          {activeTab === "TargetClient" && (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
+                <tr>
+                  <th className="py-3 px-4">Visitor Name</th>
+                  <th className="py-3 px-3">Job Title &amp; Department</th>
+                  <th className="py-3 px-3">Company &amp; Domain</th>
+                  <th className="py-3 px-3">Target / Client Segment</th>
+                  <th className="py-3 px-3">Industry / Size</th>
+                  <th className="py-3 px-3">Location</th>
+                  <th className="py-3 px-4 text-right">LinkedIn</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                      No target or client visitors match your filter.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((v: any) => (
+                    <tr key={v.id} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 px-4 font-semibold text-slate-900">{v.name}</td>
+                      <td className="py-3 px-3">
+                        <div className="font-medium text-slate-800">{v.title}</div>
+                        <div className="text-[10px] text-slate-400">{v.department}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Link
+                          href={`/accounts/${v.company_domain}`}
+                          className="font-medium text-blue-700 hover:underline"
+                        >
+                          {v.company_name}
+                        </Link>
+                        <div className="text-[10px] text-slate-400">{v.company_domain}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant={
+                            v.target_client_segment?.includes("ITS") && v.target_client_segment?.includes("DCX")
+                              ? "default"
+                              : v.target_client_segment?.includes("EC") && (v.target_client_segment?.includes("ITS") || v.target_client_segment?.includes("DCX"))
+                              ? "success"
+                              : v.target_client_segment?.includes("ITS")
+                              ? "info"
+                              : v.target_client_segment?.includes("DCX")
+                              ? "warning"
+                              : "secondary"
+                          }
+                          className="text-[10px]"
+                        >
+                          {v.target_client_segment || "Target Account"}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3">
+                        <div className="text-slate-700">{v.industry}</div>
+                        <div className="text-[10px] text-slate-400">{v.company_size}</div>
+                      </td>
+                      <td className="py-3 px-3 text-slate-600">{v.location || "United States"}</td>
+                      <td className="py-3 px-4 text-right">
+                        {v.linkedin_url ? (
+                          <a
+                            href={`https://${v.linkedin_url}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 text-blue-600 hover:underline font-medium text-[11px]"
+                          >
+                            <span>Profile</span>
+                            <ExternalLink className="size-3" />
+                          </a>
+                        ) : (
+                          <span className="text-slate-300">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* VIEW 4: Account-Level Breakup (Ranked Most Visited to Least) */}
+          {activeTab === "AccountBreakup" && (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
+                <tr>
+                  <th className="py-3 px-4 text-center w-14">Rank</th>
+                  <th className="py-3 px-4 min-w-[200px]">Company &amp; Domain</th>
+                  <th className="py-3 px-3 text-center">Total Visits</th>
+                  <th className="py-3 px-3">Target / Client Segment</th>
+                  <th className="py-3 px-3 text-center">Seniority Breakdown</th>
+                  <th className="py-3 px-3">Annual Revenue</th>
+                  <th className="py-3 px-3">Industry / Scale</th>
+                  <th className="py-3 px-4 text-right">Scope Card</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400">
+                      No companies match your search filter.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((comp: AccountLevelBreakupRecord) => (
+                    <tr key={comp.id} className="hover:bg-slate-50/60 transition-colors">
+                      {/* Rank Column */}
+                      <td className="py-3 px-4 text-center font-bold text-slate-700">
+                        {comp.rank <= 3 ? (
+                          <span className="inline-flex items-center justify-center size-6 rounded-full bg-amber-100 text-amber-800 text-[11px]">
+                            #{comp.rank}
+                          </span>
+                        ) : comp.rank <= 10 ? (
+                          <span className="inline-flex items-center justify-center size-6 rounded-full bg-slate-100 text-slate-800 text-[11px]">
+                            #{comp.rank}
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-[11px]">#{comp.rank}</span>
+                        )}
+                      </td>
+
+                      {/* Company Name & Domain */}
+                      <td className="py-3 px-4">
+                        <Link
+                          href={`/accounts/${comp.domain}`}
+                          className="font-semibold text-slate-900 hover:text-blue-700 transition-colors"
+                        >
+                          {comp.company}
+                        </Link>
+                        <div className="text-[10px] text-slate-400">{comp.domain}</div>
+                      </td>
+
+                      {/* Total Visits Badge */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="inline-flex items-center gap-1 font-bold px-2 py-0.5 rounded-full border text-[11px] bg-slate-900 text-white border-slate-900 shadow-2xs">
+                          {comp.visitors >= 10 && <Flame className="size-3 text-amber-400" />}
+                          <span>{comp.visitors} Visits</span>
+                        </div>
+                      </td>
+
+                      {/* Segment */}
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant={
+                            comp.segment.includes("Target & Client") || (comp.is_target && comp.is_client)
+                              ? "default"
+                              : comp.segment.includes("ITS")
+                              ? "info"
+                              : comp.segment.includes("DCX")
+                              ? "warning"
+                              : comp.segment.includes("EC")
+                              ? "success"
+                              : "outline"
+                          }
+                          className="text-[10px]"
+                        >
+                          {comp.segment}
+                        </Badge>
+                      </td>
+
+                      {/* Seniority Breakdown Pill Bar */}
+                      <td className="py-3 px-3 text-center">
+                        <div className="inline-flex items-center gap-1 text-[10px]">
+                          {comp.c_level > 0 && (
+                            <span className="px-1.5 py-0.5 rounded font-semibold bg-red-100 text-red-800" title="C-Level">
+                              C:{comp.c_level}
+                            </span>
+                          )}
+                          {comp.vp > 0 && (
+                            <span className="px-1.5 py-0.5 rounded font-semibold bg-purple-100 text-purple-800" title="VP / AVP">
+                              VP:{comp.vp}
+                            </span>
+                          )}
+                          {comp.director > 0 && (
+                            <span className="px-1.5 py-0.5 rounded font-semibold bg-blue-100 text-blue-800" title="Director">
+                              Dir:{comp.director}
+                            </span>
+                          )}
+                          {comp.manager > 0 && (
+                            <span className="px-1.5 py-0.5 rounded font-medium bg-slate-100 text-slate-700" title="Manager">
+                              Mgr:{comp.manager}
+                            </span>
+                          )}
+                          {comp.ic > 0 && (
+                            <span className="px-1.5 py-0.5 rounded text-slate-500" title="Staff / IC">
+                              IC:{comp.ic}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Annual Revenue */}
+                      <td className="py-3 px-3 font-medium text-emerald-700">
+                        {comp.revenue || "Private / Undisclosed"}
+                      </td>
+
+                      {/* Industry / Size */}
+                      <td className="py-3 px-3">
+                        <div className="text-slate-800">{comp.industry || "General"}</div>
+                        <div className="text-[10px] text-slate-400">{comp.company_size || "Enterprise"}</div>
+                      </td>
+
+                      {/* Action */}
+                      <td className="py-3 px-4 text-right">
+                        <Link
+                          href={`/accounts/${comp.domain}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
+                        >
+                          <span>Scope Card</span>
+                          <ArrowUpRight className="size-3" />
+                        </Link>
                       </td>
                     </tr>
                   ))

@@ -119,6 +119,7 @@ def main():
     print(f"Existing Clients rows: {len(client_rows)}")
     
     named_client_records = []
+    clients_map = {}
     for idx, r in enumerate(client_rows[1:]):
         acc_name = r.get('A', '') or r.get('K', '')
         bu = r.get('B', '') or "DIS"
@@ -135,7 +136,7 @@ def main():
         if not acc_name:
             continue
             
-        named_client_records.append({
+        rec = {
             "raw_idx": idx + 1,
             "name": acc_name,
             "bu": bu,
@@ -149,7 +150,11 @@ def main():
             "employees": employees,
             "employee_range": emp_range,
             "is_client": True
-        })
+        }
+        named_client_records.append(rec)
+        if domain and domain not in clients_map:
+            clients_map[domain] = rec
+            
     print(f"Parsed named existing client engagements: {len(named_client_records)}")
 
     # 3. Vector Account Intelligence Sheet
@@ -179,7 +184,7 @@ def main():
                 "profiles": profiles
             }
 
-    # 4. Vector All Visitors
+    # 4. Vector All Visitors (With Target & Client Segments)
     vec_all_visitors = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Vector_ All Visitors")
     print(f"Vector All Visitors rows: {len(vec_all_visitors)}")
     
@@ -200,6 +205,21 @@ def main():
         
         if not name and not comp and not c_domain:
             continue
+
+        target_info = targets_by_domain.get(c_domain, {})
+        client_info = clients_map.get(c_domain, {})
+        vec_info = vector_accounts.get(c_domain, {})
+
+        is_its = ("ITS EN" in target_info.get("classifications", set())) or vec_info.get("its_en", False)
+        is_dcx = ("DCX EN" in target_info.get("classifications", set())) or vec_info.get("dcx_en", False)
+        is_ec = bool(client_info) or vec_info.get("ec", False)
+        is_tc = is_its or is_dcx or is_ec
+
+        tc_segments = []
+        if is_its: tc_segments.append("ITS EN")
+        if is_dcx: tc_segments.append("DCX EN")
+        if is_ec: tc_segments.append("EC")
+        seg_str = " | ".join(tc_segments) if tc_segments else ""
             
         visitors_list.append({
             "id": f"vec-vis-{idx+1}",
@@ -214,9 +234,11 @@ def main():
             "company_domain": c_domain,
             "company_size": c_size,
             "company_linkedin_url": c_li,
-            "location": location
+            "location": location,
+            "is_target_client": is_tc,
+            "target_client_segment": seg_str
         })
-    print(f"Parsed visitors: {len(visitors_list)}")
+    print(f"Parsed visitors: {len(visitors_list)} (Target/Client visitors: {sum(1 for v in visitors_list if v['is_target_client'])})")
 
     # 5. Key Visitors
     vec_key_visitors = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Key Visitors")
@@ -289,8 +311,68 @@ def main():
         })
     print(f"Parsed matched contacts: {len(contacts_list)}")
 
-    # 7. Unify into Canonical Accounts
-    # Track domains where target status is assigned so that in targets workspace, each domain is represented once
+    # 7. Account-Level Breakup Sheet (All 1,741 companies ranked most visited to least)
+    alb_rows = read_xlsx_sheet("Vector_Summary_22_Nov_2026_Account_Intelligence_EN_EC (1).xlsx", "Account-level breakup")
+    print(f"Account-level breakup rows: {len(alb_rows)}")
+    
+    account_breakup_list = []
+    for idx, r in enumerate(alb_rows[1:]):
+        comp_name = r.get('A')
+        if not comp_name:
+            continue
+        c_dom = clean_domain(r.get('O'))
+        vis_cnt = int(r.get('E', '0') or 0)
+        vec_info = vector_accounts.get(c_dom, {})
+        target_info = targets_by_domain.get(c_dom, {})
+        client_info = clients_map.get(c_dom, {})
+
+        is_dcx = (r.get('P', 'No') == 'Yes') or ("DCX EN" in target_info.get("classifications", set())) or vec_info.get("dcx_en", False)
+        is_its = (r.get('Q', 'No') == 'Yes') or ("ITS EN" in target_info.get("classifications", set())) or vec_info.get("its_en", False)
+        is_ec = bool(client_info) or vec_info.get("ec", False)
+
+        seg = "Prospect"
+        if (is_dcx or is_its) and is_ec:
+            seg = "Target & Client"
+        elif is_dcx and is_its:
+            seg = "DCX + ITS EN"
+        elif is_its:
+            seg = "ITS EN"
+        elif is_dcx:
+            seg = "DCX EN"
+        elif is_ec:
+            seg = "Existing Client (EC)"
+
+        account_breakup_list.append({
+            "id": f"alb-{idx+1}",
+            "company": comp_name,
+            "domain": c_dom,
+            "revenue": r.get('B', ''),
+            "industry": r.get('C', ''),
+            "company_size": r.get('D', ''),
+            "visitors": vis_cnt,
+            "board": int(r.get('F', '0') or 0),
+            "c_level": int(r.get('G', '0') or 0),
+            "vp": int(r.get('H', '0') or 0),
+            "head": int(r.get('I', '0') or 0),
+            "director": int(r.get('J', '0') or 0),
+            "senior": int(r.get('K', '0') or 0),
+            "owner": int(r.get('L', '0') or 0),
+            "manager": int(r.get('M', '0') or 0),
+            "ic": int(r.get('N', '0') or 0),
+            "dcx_en": is_dcx,
+            "its_en": is_its,
+            "is_target": is_dcx or is_its,
+            "is_client": is_ec,
+            "segment": seg
+        })
+
+    # Sort descending by visitors
+    account_breakup_list.sort(key=lambda x: x["visitors"], reverse=True)
+    for i, item in enumerate(account_breakup_list):
+        item["rank"] = i + 1
+    print(f"Parsed account-level breakup companies: {len(account_breakup_list)}")
+
+    # 8. Unify into Canonical Accounts
     target_assigned_domains = set()
     canonical_accounts = []
 
@@ -300,7 +382,6 @@ def main():
         target_info = targets_by_domain.get(domain, {})
         vec_info = vector_accounts.get(domain, {})
         
-        # Classification for target if matching
         is_target_its = ("ITS EN" in target_info.get("classifications", set())) or vec_info.get("its_en", False)
         is_target_dcx = ("DCX EN" in target_info.get("classifications", set())) or vec_info.get("dcx_en", False)
         
@@ -315,21 +396,18 @@ def main():
         else:
             target_class = "None"
             
-        # Target assignment flag: only mark is_target=True on the first record for this domain
         has_target_match = bool(target_info) or is_target_its or is_target_dcx
         is_target_account = False
         if has_target_match and (domain not in target_assigned_domains):
             is_target_account = True
             target_assigned_domains.add(domain)
 
-        # Segments
         seg_parts = []
         if is_target_its: seg_parts.append("ITS EN")
         if is_target_dcx: seg_parts.append("DCX EN")
         seg_parts.append("EC")
         segment_str = " | ".join(seg_parts)
 
-        # Revenue
         rev_k = client_record.get("revenue_k") or target_info.get("revenue_k")
         rev_range = client_record.get("revenue_range") or target_info.get("revenue_range")
         rev_usd = 0
@@ -339,7 +417,6 @@ def main():
             except:
                 pass
                 
-        # Hard ICP Gate: Revenue > $10M
         is_icp = False
         icp_status = "Revenue Unknown"
         if rev_usd > 10000000:
@@ -361,7 +438,6 @@ def main():
         bu = client_record.get("bu") or "DIS"
         owner = client_record.get("vertical_am") or "Vertical AM"
         
-        # Vector stats
         vec_profiles = vec_info.get("profiles", 0)
         matched_vis_count = sum(1 for v in visitors_list if v["company_domain"] == domain)
         if matched_vis_count > vec_profiles:
@@ -369,7 +445,6 @@ def main():
         matched_contacts = [c for c in contacts_list if c["account_domain"] == domain]
         has_vector = vec_profiles > 0
 
-        # Scoring
         fit_industry = 25 if industry in ["Software & Platforms", "Retail CPG MFG", "Telecom", "BFSI", "Technology"] else 15
         fit_rev = 20 if rev_usd >= 100000000 or "1b" in (rev_range or "").lower() else (15 if is_icp else 5)
         fit_tech = 18
@@ -405,7 +480,6 @@ def main():
         else:
             tier = "Tier 4: Watchlist"
 
-        # Growth score
         client_growth_score = round(
             (0.30 * 85) +
             (0.25 * intent_score) +
@@ -416,7 +490,6 @@ def main():
         )
         client_growth_score = min(99, max(30, client_growth_score))
 
-        # Service penetration matrix
         service_lines = {
             "Cloud & DevOps": "Confirmed" if (bu in ["DES", "DIS"]) else ("Inferred" if is_target_its else "Unknown"),
             "Cybersecurity": "Confirmed" if (bu == "EPS") else ("Inferred" if vec_profiles > 3 else "Unknown"),
@@ -469,7 +542,7 @@ def main():
         }
         canonical_accounts.append(acct_obj)
 
-    # Second: Add target-only accounts (companies in targets that are not existing clients)
+    # Second: Add target-only accounts
     client_domains = set(c["domain"] for c in named_client_records)
     for domain, target_info in sorted(targets_by_domain.items()):
         if domain in client_domains:
@@ -621,14 +694,14 @@ def main():
     print(f"Total clients (is_client=True): {sum(1 for a in canonical_accounts if a['is_client'])}")
     print(f"Total targets (is_target=True): {sum(1 for a in canonical_accounts if a['is_target'])}")
 
-    # 8. Output database JSON
+    # 9. Output database JSON
     output_dir = r"C:\Users\vishn\.gemini\antigravity-cli\brain\2b7d1c9a-8608-4f3f-9c14-a3a326b69f21\scratch"
     os.makedirs(output_dir, exist_ok=True)
     
     db_payload = {
         "metadata": {
-            "version": "1.1.0",
-            "generated_at": "2026-11-22T19:20:00+05:30",
+            "version": "1.2.0",
+            "generated_at": "2026-11-22T19:35:00+05:30",
             "total_accounts": len(canonical_accounts),
             "total_targets": sum(1 for a in canonical_accounts if a["is_target"]),
             "total_clients": sum(1 for a in canonical_accounts if a["is_client"]),
@@ -637,12 +710,14 @@ def main():
             "total_tier_2": sum(1 for a in canonical_accounts if a["tier"] == "Tier 2: Engage via ABM"),
             "total_visitors": len(visitors_list),
             "total_key_visitors": len(key_visitors_list),
-            "total_matched_contacts": len(contacts_list)
+            "total_matched_contacts": len(contacts_list),
+            "total_account_level_breakup": len(account_breakup_list)
         },
         "accounts": canonical_accounts,
         "visitors": visitors_list,
         "key_visitors": key_visitors_list,
         "matched_contacts": contacts_list,
+        "account_level_breakup": account_breakup_list,
         "credit_governor": {
             "monthly_budget": 5000,
             "monthly_consumed": 420,
