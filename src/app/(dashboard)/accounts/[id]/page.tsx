@@ -5,6 +5,8 @@ import dbData from "@/data/canonical_database.json"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
+export const instant = false
+
 export function generateStaticParams() {
   const domains = Array.from(new Set(dbData.accounts.map((account) => account.domain)))
   return domains.map((domain) => ({
