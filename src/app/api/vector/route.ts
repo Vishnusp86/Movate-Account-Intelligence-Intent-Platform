@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getVisitors, getKeyVisitors } from "@/lib/db/repository"
+import { getVisitors, getKeyVisitors, getAccountPagesSummary, getAccountPagesVisited } from "@/lib/db/repository"
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -9,6 +9,28 @@ export async function GET(request: NextRequest) {
   const seniority = searchParams.get("seniority") || undefined
   const limit = parseInt(searchParams.get("limit") || "50", 10)
   const offset = parseInt(searchParams.get("offset") || "0", 10)
+
+  if (type === "pages") {
+    if (domain) {
+      const pages = getAccountPagesVisited(domain)
+      return NextResponse.json({ total: pages.length, domain, pages })
+    }
+    const allPagesSummary = getAccountPagesSummary()
+    const filtered = query
+      ? allPagesSummary.filter(
+          (a) =>
+            a.account_name.toLowerCase().includes(query.toLowerCase()) ||
+            a.domain.toLowerCase().includes(query.toLowerCase()) ||
+            a.top_category.toLowerCase().includes(query.toLowerCase())
+        )
+      : allPagesSummary
+    return NextResponse.json({
+      total: filtered.length,
+      items: filtered.slice(offset, offset + limit),
+      offset,
+      limit,
+    })
+  }
 
   if (type === "key") {
     const result = getKeyVisitors({ query, seniority, limit, offset })

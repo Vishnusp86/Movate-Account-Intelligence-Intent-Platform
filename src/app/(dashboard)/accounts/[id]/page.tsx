@@ -30,6 +30,7 @@ import {
   FileText,
   ThumbsUp,
   ThumbsDown,
+  Globe,
 } from "lucide-react"
 
 export default async function AccountProfilePage({
@@ -48,6 +49,8 @@ export default async function AccountProfilePage({
 
   const visitors = getVisitors({ domain: account.domain, limit: 20 }).items
   const contacts = getMatchedContactsForAccount(account.domain)
+  const pagesVisited = account.vector_pages_visited || []
+  const totalBusinessPvs = account.total_business_pageviews || pagesVisited.reduce((sum, p) => sum + p.pageviews, 0)
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -368,6 +371,88 @@ export default async function AccountProfilePage({
           ) : (
             <div className="p-4 rounded-lg border border-slate-200 bg-white text-xs text-slate-500 italic">
               No direct Vector visitor profiles identified for this domain yet.
+            </div>
+          )}
+        </div>
+
+        {/* Section 8B: Vector Business Pages Visited (Account-Level) */}
+        <div className="p-6 border-t border-slate-200 bg-white">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-1.5">
+              <Globe className="size-4 text-blue-600" />
+              Section 8B: Vector Business Pages Visited ({pagesVisited.length})
+            </h3>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-[11px] bg-blue-50 text-blue-700 border-blue-200 font-semibold">
+                {totalBusinessPvs} Total Pageviews
+              </Badge>
+              <span className="text-[11px] text-slate-500 hidden sm:inline">First-party deanonymized consumption</span>
+            </div>
+          </div>
+
+          {pagesVisited.length > 0 ? (
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-medium">
+                  <tr>
+                    <th className="py-2.5 px-3">Page Title & Topic</th>
+                    <th className="py-2.5 px-3">Solution Category</th>
+                    <th className="py-2.5 px-3">Page URL</th>
+                    <th className="py-2.5 px-3 text-center">Pageviews</th>
+                    <th className="py-2.5 px-3 text-right">Last Visited</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {pagesVisited.map((p, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="py-2.5 px-3 font-semibold text-slate-900">
+                        {p.page_title}
+                      </td>
+                      <td className="py-2.5 px-3">
+                        <Badge
+                          variant={
+                            p.category === "AI & GenAI"
+                              ? "purple"
+                              : p.category === "Digital CX"
+                              ? "info"
+                              : p.category === "Cloud & IT Ops"
+                              ? "success"
+                              : p.category === "Data & Analytics"
+                              ? "warning"
+                              : "outline"
+                          }
+                          className="text-[10px]"
+                        >
+                          {p.category}
+                        </Badge>
+                      </td>
+                      <td className="py-2.5 px-3 font-mono text-[11px] text-slate-500">
+                        <a
+                          href={p.page_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                        >
+                          <span>{p.page_url.replace("https://www.movate.com", "") || "/"}</span>
+                          <ExternalLink className="size-3" />
+                        </a>
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[11px] bg-slate-100 text-slate-800">
+                          {p.pageviews}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-right text-slate-500 text-[11px]">
+                        {p.last_visited}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-4 rounded-lg border border-slate-200 bg-slate-50/50 text-xs text-slate-500 italic">
+              No specific business page sessions captured for this domain yet. Recommended focus: Core Services & AI Native Engineering.
             </div>
           )}
         </div>

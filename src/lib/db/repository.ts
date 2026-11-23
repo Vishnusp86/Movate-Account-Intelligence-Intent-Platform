@@ -7,6 +7,31 @@ export interface IntentTopicItem {
   service_line: string
 }
 
+export interface PageVisitedRecord {
+  page_url: string
+  page_title: string
+  category: "AI & GenAI" | "Digital CX" | "Cloud & IT Ops" | "Data & Analytics" | "Industry Solutions" | "Executive & Overview" | string
+  pageviews: number
+  last_visited: string
+}
+
+export interface AccountPagesVisitedSummary {
+  account_id: string
+  account_name: string
+  domain: string
+  industry: string
+  account_segments: string
+  target_classification: string
+  is_target: boolean
+  is_client: boolean
+  visitors_count: number
+  total_pageviews: number
+  top_page: string
+  top_page_url: string
+  top_category: string
+  pages_visited: PageVisitedRecord[]
+}
+
 export interface CanonicalAccount {
   id: string
   name: string
@@ -38,6 +63,8 @@ export interface CanonicalAccount {
   intent_topics: IntentTopicItem[]
   matched_contacts_count: number
   zoominfo_id: string
+  vector_pages_visited?: PageVisitedRecord[]
+  total_business_pageviews?: number
 }
 
 export interface VisitorRecord {
@@ -288,4 +315,13 @@ export function getIntentTopicMatrix() {
 
 export function getAccountLevelBreakup() {
   return accountBreakupList
+}
+
+export function getAccountPagesVisited(domain: string): PageVisitedRecord[] {
+  const account = getAccountByDomain(domain)
+  return account?.vector_pages_visited || []
+}
+
+export function getAccountPagesSummary(): AccountPagesVisitedSummary[] {
+  return (dbData as unknown as { account_pages_visited?: AccountPagesVisitedSummary[] }).account_pages_visited || []
 }

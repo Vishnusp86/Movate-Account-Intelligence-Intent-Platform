@@ -29,11 +29,12 @@ import {
   MapPin,
   Briefcase,
   DollarSign,
+  Globe,
 } from "lucide-react"
 import dbData from "@/data/canonical_database.json"
 import { AccountLevelBreakupRecord } from "@/lib/db/repository"
 
-type TabType = "All" | "Key" | "TargetClient" | "AccountBreakup"
+type TabType = "All" | "Key" | "TargetClient" | "AccountBreakup" | "PagesVisited"
 
 export default function VectorIntelPage() {
   const [activeTab, setActiveTab] = useState<TabType>("All")
@@ -41,12 +42,14 @@ export default function VectorIntelPage() {
   const [seniorityFilter, setSeniorityFilter] = useState("All")
   const [targetClientFilter, setTargetClientFilter] = useState("All")
   const [breakupFilter, setBreakupFilter] = useState("All")
+  const [pagesVisitedFilter, setPagesVisitedFilter] = useState("All")
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(50)
 
   const allVisitors = dbData.visitors as any[]
   const keyVisitors = dbData.key_visitors as any[]
   const accountBreakup = ((dbData as any).account_level_breakup || []) as AccountLevelBreakupRecord[]
+  const accountPagesVisited = ((dbData as any).account_pages_visited || []) as any[]
 
   // All visitors from ITS EN, DCX EN target accounts and Existing Client accounts
   const targetClientVisitors = useMemo(() => {
@@ -73,10 +76,21 @@ export default function VectorIntelPage() {
     }
   }, [accountBreakup])
 
+  // Counts for Pages Visited tab chips
+  const pvCounts = useMemo(() => {
+    return {
+      all: accountPagesVisited.length,
+      its: accountPagesVisited.filter((a) => a.target_classification?.includes("ITS EN") || a.account_segments?.includes("ITS EN")).length,
+      dcx: accountPagesVisited.filter((a) => a.target_classification?.includes("DCX EN") || a.account_segments?.includes("DCX EN")).length,
+      clients: accountPagesVisited.filter((a) => a.is_client).length,
+      highIntent: accountPagesVisited.filter((a) => a.total_pageviews >= 20).length,
+    }
+  }, [accountPagesVisited])
+
   // Reset page when any filter or tab changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [activeTab, searchQuery, seniorityFilter, targetClientFilter, breakupFilter, pageSize])
+  }, [activeTab, searchQuery, seniorityFilter, targetClientFilter, breakupFilter, pagesVisitedFilter, pageSize])
 
   // Filtered dataset according to active tab
   const filteredData = useMemo(() => {
@@ -140,6 +154,30 @@ export default function VectorIntelPage() {
       return list
     }
 
+    if (activeTab === "PagesVisited") {
+      let list = accountPagesVisited
+      if (pagesVisitedFilter === "ITS EN") {
+        list = list.filter((a) => a.target_classification?.includes("ITS EN") || a.account_segments?.includes("ITS EN"))
+      } else if (pagesVisitedFilter === "DCX EN") {
+        list = list.filter((a) => a.target_classification?.includes("DCX EN") || a.account_segments?.includes("DCX EN"))
+      } else if (pagesVisitedFilter === "Clients") {
+        list = list.filter((a) => a.is_client)
+      } else if (pagesVisitedFilter === "HighIntent") {
+        list = list.filter((a) => a.total_pageviews >= 20)
+      }
+      if (q) {
+        list = list.filter(
+          (a) =>
+            a.account_name?.toLowerCase().includes(q) ||
+            a.domain?.toLowerCase().includes(q) ||
+            a.industry?.toLowerCase().includes(q) ||
+            a.top_category?.toLowerCase().includes(q) ||
+            a.pages_visited?.some((p: any) => p.page_title.toLowerCase().includes(q) || p.page_url.toLowerCase().includes(q))
+        )
+      }
+      return list
+    }
+
     // Default: "All"
     let list = allVisitors
     if (q) {
@@ -159,10 +197,12 @@ export default function VectorIntelPage() {
     keyVisitors,
     targetClientVisitors,
     accountBreakup,
+    accountPagesVisited,
     searchQuery,
     seniorityFilter,
     targetClientFilter,
     breakupFilter,
+    pagesVisitedFilter,
   ])
 
   // Pagination calculations
@@ -273,7 +313,21 @@ export default function VectorIntelPage() {
             }`}
           >
             <Trophy className="size-3.5 text-amber-500" />
-            <span>Account-Level Breakup ({accountBreakup.length})</span>
+            <span>Account Breakup ({accountBreakup.length})</span>
+          </button>
+
+          {/* Tab 5: Account-Wise Pages Visited */}
+          <button
+            type="button"
+            onClick={() => setActiveTab("PagesVisited")}
+            className={`px-3.5 py-2 rounded-lg text-xs font-medium transition-all touch-manipulation cursor-pointer flex items-center gap-1.5 ${
+              activeTab === "PagesVisited"
+                ? "bg-white text-blue-800 shadow-sm font-semibold"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
+            }`}
+          >
+            <Globe className="size-3.5 text-blue-600" />
+            <span>Pages Visited (Account-Wise) ({accountPagesVisited.length})</span>
           </button>
         </div>
       </div>
@@ -282,6 +336,31 @@ export default function VectorIntelPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         {/* Sub-Filters per Tab */}
         <div className="w-full sm:w-auto">
+          {activeTab === "PagesVisited" && (
+            <div className="flex flex-wrap items-center gap-1.5 text-xs">
+              <span className="text-slate-500 text-xs font-medium mr-1">Filter:</span>
+              {[
+                { label: "All Ranked", key: "All", count: pvCounts.all },
+                { label: "ITS EN Targets", key: "ITS EN", count: pvCounts.its },
+                { label: "DCX EN Targets", key: "DCX EN", count: pvCounts.dcx },
+                { label: "Clients (EC)", key: "Clients", count: pvCounts.clients },
+                { label: "High Volume (≥ 20 Views)", key: "HighIntent", count: pvCounts.highIntent },
+              ].map((chip) => (
+                <button
+                  type="button"
+                  key={chip.key}
+                  onClick={() => setPagesVisitedFilter(chip.key)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-medium transition-all cursor-pointer touch-manipulation active:scale-95 ${
+                    pagesVisitedFilter === chip.key
+                      ? "bg-blue-900 text-white border-blue-900 shadow-xs"
+                      : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                  }`}
+                >
+                  {chip.label} ({chip.count})
+                </button>
+              ))}
+            </div>
+          )}
           {activeTab === "Key" && (
             <div className="flex flex-wrap items-center gap-1.5 text-xs">
               <span className="text-slate-500 text-xs font-medium mr-1">Seniority:</span>
@@ -784,6 +863,120 @@ export default function VectorIntelPage() {
               </tbody>
             </table>
           )}
+
+          {/* VIEW 5: Account-Wise Pages Visited */}
+          {activeTab === "PagesVisited" && (
+            <table className="w-full text-xs text-left">
+              <thead className="bg-slate-50/80 border-b border-slate-200 text-slate-500 font-medium">
+                <tr>
+                  <th className="py-3 px-4">Account &amp; Domain</th>
+                  <th className="py-3 px-3">Segment</th>
+                  <th className="py-3 px-3">Visitors</th>
+                  <th className="py-3 px-3 text-center">Business Pageviews</th>
+                  <th className="py-3 px-3">Top Pages Visited</th>
+                  <th className="py-3 px-3">Solution Area</th>
+                  <th className="py-3 px-4 text-right">Scope Card</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginatedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="py-8 text-center text-slate-400">
+                      No accounts match your search or filter.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedItems.map((acct: any) => (
+                    <tr key={acct.account_id || acct.domain} className="hover:bg-slate-50/60 transition-colors">
+                      <td className="py-3 px-4">
+                        <Link
+                          href={`/accounts/${acct.domain}`}
+                          className="font-semibold text-slate-900 hover:text-blue-700 transition-colors text-sm block leading-tight"
+                        >
+                          {acct.account_name}
+                        </Link>
+                        <div className="text-[11px] text-slate-400 font-mono mt-0.5">{acct.domain}</div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant={
+                            acct.target_classification === "ITS EN"
+                              ? "info"
+                              : acct.target_classification === "DCX EN"
+                              ? "warning"
+                              : acct.is_client
+                              ? "success"
+                              : "secondary"
+                          }
+                          className="text-[10px]"
+                        >
+                          {acct.account_segments}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-3">
+                        <span className="font-semibold text-slate-800">
+                          {acct.visitors_count}
+                        </span>
+                        <span className="text-[10px] text-slate-400 ml-1">profiles</span>
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-bold text-xs bg-blue-50 text-blue-700 border border-blue-200/60">
+                          <Activity className="size-3 text-blue-500" />
+                          <span>{acct.total_pageviews}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 px-3 max-w-md">
+                        <div className="space-y-1">
+                          {acct.pages_visited.slice(0, 3).map((p: any, idx: number) => (
+                            <div key={idx} className="flex items-center justify-between gap-2 text-[11px]">
+                              <a
+                                href={p.page_url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="truncate text-slate-700 hover:text-blue-700 hover:underline max-w-[260px] inline-flex items-center gap-1"
+                                title={p.page_title}
+                              >
+                                <span className="truncate">{p.page_title}</span>
+                                <ExternalLink className="size-2.5 text-slate-400 shrink-0" />
+                              </a>
+                              <span className="text-[10px] font-semibold text-slate-500 shrink-0 bg-slate-100 px-1.5 py-0.5 rounded">
+                                {p.pageviews} views
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="py-3 px-3">
+                        <Badge
+                          variant={
+                            acct.top_category === "AI & GenAI"
+                              ? "purple"
+                              : acct.top_category === "Digital CX"
+                              ? "info"
+                              : acct.top_category === "Data & Analytics"
+                              ? "warning"
+                              : "outline"
+                          }
+                          className="text-[10px]"
+                        >
+                          {acct.top_category}
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <Link
+                          href={`/accounts/${acct.domain}`}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
+                        >
+                          <span>Scope Card</span>
+                          <ArrowUpRight className="size-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
         </div>
 
         {/* ========================================================================= */}
@@ -794,6 +987,79 @@ export default function VectorIntelPage() {
             <div className="p-6 text-center text-xs text-slate-400">
               No results found matching your search.
             </div>
+          ) : activeTab === "PagesVisited" ? (
+            // Mobile Card for Account-Wise Pages Visited
+            paginatedItems.map((acct: any) => (
+              <div key={acct.account_id || acct.domain} className="p-3.5 space-y-2.5 bg-white hover:bg-slate-50/50">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <Link
+                      href={`/accounts/${acct.domain}`}
+                      className="font-semibold text-slate-900 text-sm hover:text-blue-700 transition-colors leading-tight block"
+                    >
+                      {acct.account_name}
+                    </Link>
+                    <div className="text-[11px] text-slate-400 font-mono mt-0.5">{acct.domain}</div>
+                  </div>
+
+                  <div className="inline-flex items-center gap-1 font-bold px-2.5 py-1 rounded-full text-xs bg-blue-50 text-blue-800 border border-blue-200/60 shrink-0">
+                    <Activity className="size-3 text-blue-600" />
+                    <span>{acct.total_pageviews} Views</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  <Badge
+                    variant={
+                      acct.target_classification === "ITS EN"
+                        ? "info"
+                        : acct.target_classification === "DCX EN"
+                        ? "warning"
+                        : acct.is_client
+                        ? "success"
+                        : "outline"
+                    }
+                    className="text-[10px]"
+                  >
+                    {acct.account_segments}
+                  </Badge>
+                  <span className="text-[11px] text-slate-500">{acct.industry}</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-[11px] font-medium text-slate-700">{acct.visitors_count} visitors</span>
+                </div>
+
+                {/* Top Visited Pages List */}
+                <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1.5">
+                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Top Pages Visited:</div>
+                  {acct.pages_visited.slice(0, 3).map((p: any, idx: number) => (
+                    <div key={idx} className="flex items-center justify-between gap-2 text-xs">
+                      <a
+                        href={p.page_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="truncate text-slate-800 hover:text-blue-700 hover:underline flex items-center gap-1 text-[11px]"
+                      >
+                        <span className="truncate">{p.page_title}</span>
+                        <ExternalLink className="size-2.5 text-slate-400 shrink-0" />
+                      </a>
+                      <span className="text-[10px] font-semibold text-slate-600 shrink-0 bg-white border border-slate-200 px-1.5 py-0.5 rounded">
+                        {p.pageviews}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="pt-1">
+                  <Link
+                    href={`/accounts/${acct.domain}`}
+                    className="w-full flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-800 bg-slate-50 hover:bg-slate-100 transition-colors"
+                  >
+                    <span>View Account Scope Card</span>
+                    <ArrowUpRight className="size-3.5" />
+                  </Link>
+                </div>
+              </div>
+            ))
           ) : activeTab === "AccountBreakup" ? (
             // Mobile Card for Account-Level Breakup
             paginatedItems.map((comp: AccountLevelBreakupRecord) => (
