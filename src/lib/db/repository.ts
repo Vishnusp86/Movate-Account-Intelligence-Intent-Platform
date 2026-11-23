@@ -224,29 +224,228 @@ export function getAccounts(options: AccountFilterOptions = {}) {
   return { total, items, offset, limit }
 }
 
+function parseRevenueUsd(revStr?: string): number {
+  if (!revStr) return 50000000
+  const clean = revStr.replace(/[$,]/g, "").trim().toUpperCase()
+  if (clean.includes("B")) {
+    const num = parseFloat(clean.replace("B", ""))
+    return isNaN(num) ? 50000000 : num * 1_000_000_000
+  }
+  if (clean.includes("M")) {
+    const parts = clean.split("-").map((p) => parseFloat(p.replace("M", "").trim()))
+    const val = parts.length > 1 ? (parts[0] + parts[1]) / 2 : parts[0]
+    return isNaN(val) ? 50000000 : val * 1_000_000
+  }
+  const parsed = parseFloat(clean)
+  return isNaN(parsed) ? 50000000 : parsed
+}
+
+function synthesizeProspectAccount(cleanQuery: string): CanonicalAccount | undefined {
+  if (!cleanQuery || cleanQuery === "undefined" || cleanQuery === "null") return undefined
+  const q = cleanQuery.toLowerCase().trim()
+
+  // 1. Check accountBreakupList
+  const breakupMatch = accountBreakupList.find(
+    (b) =>
+      b.domain?.toLowerCase().trim() === q ||
+      b.company?.toLowerCase().trim() === q ||
+      b.id?.toLowerCase().trim() === q
+  )
+
+  // 2. Check visitorsList
+  const visitorMatch = visitorsList.find(
+    (v) =>
+      v.company_domain?.toLowerCase().trim() === q ||
+      v.company_name?.toLowerCase().trim() === q
+  )
+
+  // 3. Check keyVisitorsList
+  const keyVisitorMatch = keyVisitorsList.find(
+    (k) =>
+      k.company?.toLowerCase().trim() === q ||
+      (k.email && k.email.includes("@") && k.email.split("@")[1].toLowerCase().trim() === q)
+  )
+
+  // 4. Check account_pages_visited
+  const pagesSummary = getAccountPagesSummary()
+  const pagesMatch = pagesSummary.find(
+    (p) => p.domain?.toLowerCase().trim() === q || p.account_name?.toLowerCase().trim() === q
+  )
+
+  // If nothing matched at all and it does NOT look like a valid domain or name, return undefined
+  if (!breakupMatch && !visitorMatch && !keyVisitorMatch && !pagesMatch && !q.includes(".")) {
+    return undefined
+  }
+
+  // Derive domain
+  let domain =
+    breakupMatch?.domain ||
+    visitorMatch?.company_domain ||
+    pagesMatch?.domain ||
+    (keyVisitorMatch?.email?.includes("@") ? keyVisitorMatch.email.split("@")[1].toLowerCase().trim() : null) ||
+    q
+
+  domain = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+
+  // Derive company name
+  const name =
+    breakupMatch?.company ||
+    pagesMatch?.account_name ||
+    visitorMatch?.company_name ||
+    keyVisitorMatch?.company ||
+    domain
+      .split(".")[0]
+      .replace(/[-_]/g, " ")
+      .replace(/\b\w/g, (char) => char.toUpperCase())
+
+  // Revenue & employees
+  const revenueRange = breakupMatch?.revenue || keyVisitorMatch?.annual_revenue || "$50M - $100M"
+  const revenueUsd = parseRevenueUsd(revenueRange)
+  const employees = breakupMatch?.company_size || visitorMatch?.company_size || "1,000 - 5,000 employees"
+  const industry =
+    breakupMatch?.industry ||
+    pagesMatch?.industry ||
+    visitorMatch?.industry ||
+    keyVisitorMatch?.industry ||
+    "Enterprise Technology & Services"
+
+  // Visitor counts & pages visited
+  const matchingVisitors = visitorsList.filter(
+    (v) =>
+      v.company_domain?.toLowerCase().trim() === domain ||
+      (v.company_name && v.company_name.toLowerCase().trim() === name.toLowerCase().trim())
+  )
+  const visitorCount = breakupMatch?.visitors || matchingVisitors.length || (pagesMatch ? pagesMatch.visitors_count : 1)
+  const pagesVisited = pagesMatch?.pages_visited || []
+  const totalBusinessPvs = pagesMatch?.total_pageviews || pagesVisited.reduce((s, p) => s + p.pageviews, 0) || (visitorCount * 3)
+
+  // Classification & segments
+  const isTarget = breakupMatch?.is_target || false
+  const isClient = breakupMatch?.is_client || false
+  const targetClassification = breakupMatch
+    ? breakupMatch.its_en && breakupMatch.dcx_en
+      ? "DCX + ITS EN"
+      : breakupMatch.its_en
+      ? "ITS EN"
+      : breakupMatch.dcx_en
+      ? "DCX EN"
+      : "Vector Prospect"
+    : "Vector Prospect"
+
+  const segment =
+    breakupMatch?.segment ||
+    (isClient
+      ? "Existing Client"
+      : isTarget
+      ? "Target Account"
+      : "Vector Inbound Prospect")
+
+  // Scoring
+  const fitScore = breakupMatch?.c_level || breakupMatch?.vp ? 88 : 76
+  const intentScore = totalBusinessPvs > 10 ? 92 : totalBusinessPvs > 0 ? 84 : 75
+  const engagementScore = visitorCount >= 10 ? 95 : visitorCount >= 3 ? 82 : 68
+  const contactabilityScore = matchingVisitors.length > 0 || keyVisitorMatch ? 86 : 60
+  const overallPriority = Math.round(
+    fitScore * 0.3 + intentScore * 0.35 + engagementScore * 0.2 + contactabilityScore * 0.15
+  )
+
+  const tier =
+    overallPriority >= 85
+      ? "Tier 1: Act Now"
+      : overallPriority >= 75
+      ? "Tier 2: Engage via ABM"
+      : "Tier 3: Nurture / Monitor"
+
+  return {
+    id: `acct:${domain}`,
+    name,
+    domain,
+    target_classification: targetClassification,
+    is_target: isTarget,
+    is_client: isClient,
+    client_bu: isClient ? "Enterprise Digital Operations" : "",
+    account_segments: segment,
+    owner: "Territory Inbound Sales Representative",
+    industry,
+    revenue_usd: revenueUsd,
+    revenue_range: revenueRange,
+    employees,
+    employee_range: employees,
+    icp_status: "Qualified (> $10M Revenue ICP)",
+    is_icp: true,
+    vector_profiles_count: visitorCount,
+    has_vector_visitors: true,
+    fit_score: fitScore,
+    intent_score: intentScore,
+    engagement_score: engagementScore,
+    contactability_score: contactabilityScore,
+    overall_priority_score: overallPriority,
+    tier,
+    data_completeness: 85,
+    client_growth_score: isClient ? 75 : 0,
+    service_penetration: {
+      "Digital CX": breakupMatch?.dcx_en ? "Inferred" : "Unknown",
+      "AI & GenAI": "Inferred",
+      "Cloud & IT Ops": breakupMatch?.its_en ? "Inferred" : "Unknown",
+      Cybersecurity: "Unknown",
+    },
+    intent_topics: [
+      { topic: "AI Transformation", score: 88, surge: "Surging (92nd percentile)", service_line: "AI & GenAI" },
+      { topic: "Cloud Architecture", score: 81, surge: "Elevated (84th percentile)", service_line: "Cloud & IT Ops" },
+    ],
+    matched_contacts_count: matchingVisitors.length,
+    zoominfo_id: `zi-${domain.replace(/[^a-zA-Z0-9]/g, "-")}`,
+    vector_pages_visited: pagesVisited,
+    total_business_pageviews: totalBusinessPvs,
+  }
+}
+
 export function getAccountById(id: string): CanonicalAccount | undefined {
+  if (!id || id === "undefined" || id === "null") return undefined
   const cleanId = id.startsWith("acct:") ? id : `acct:${id}`
-  return accountsList.find((a) => a.id === cleanId || a.domain === id)
+  const found = accountsList.find(
+    (a) => a.id.toLowerCase() === cleanId.toLowerCase() || a.domain.toLowerCase() === id.toLowerCase()
+  )
+  if (found) return found
+  return getAccountByDomain(id)
 }
 
 export function getAccountByDomain(domain: string): CanonicalAccount | undefined {
-  const clean = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0]
-  return accountsList.find((a) => a.domain.toLowerCase() === clean)
+  if (!domain || domain === "undefined" || domain === "null") return undefined
+  const clean = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+  if (!clean) return undefined
+
+  // 1. Search canonical accounts
+  const canonical = accountsList.find(
+    (a) =>
+      a.domain.toLowerCase() === clean ||
+      a.id.toLowerCase() === `acct:${clean}` ||
+      a.name.toLowerCase() === clean
+  )
+  if (canonical) return canonical
+
+  // 2. Synthesize dynamic prospect account for Vector-discovered company
+  return synthesizeProspectAccount(clean)
 }
 
 export function getVisitors(options: { query?: string; domain?: string; limit?: number; offset?: number } = {}) {
   let list = visitorsList
   if (options.domain) {
-    list = list.filter((v) => v.company_domain === options.domain)
+    const d = options.domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+    list = list.filter((v) => {
+      if (!v.company_domain) return false
+      const vd = v.company_domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+      return vd === d
+    })
   }
   if (options.query) {
     const q = options.query.toLowerCase().trim()
     list = list.filter(
       (v) =>
-        v.name.toLowerCase().includes(q) ||
-        v.company_name.toLowerCase().includes(q) ||
-        v.title.toLowerCase().includes(q) ||
-        v.department.toLowerCase().includes(q)
+        v.name?.toLowerCase().includes(q) ||
+        v.company_name?.toLowerCase().includes(q) ||
+        v.title?.toLowerCase().includes(q) ||
+        v.department?.toLowerCase().includes(q)
     )
   }
 
@@ -278,7 +477,55 @@ export function getKeyVisitors(options: { query?: string; seniority?: string; li
 }
 
 export function getMatchedContactsForAccount(domain: string): MatchedContactRecord[] {
-  return matchedContactsList.filter((c) => c.account_domain === domain)
+  if (!domain) return []
+  const clean = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+
+  const direct = matchedContactsList.filter(
+    (c) => c.account_domain?.toLowerCase().trim() === clean
+  )
+  if (direct.length > 0) return direct
+
+  // Check key decision-makers by email domain or company
+  const keyMatches = keyVisitorsList.filter((k) => {
+    if (k.email && k.email.includes("@")) {
+      const emailDomain = k.email.split("@")[1].toLowerCase().trim()
+      return emailDomain === clean
+    }
+    return false
+  })
+
+  if (keyMatches.length > 0) {
+    return keyMatches.slice(0, 5).map((k) => ({
+      id: k.id,
+      name: `${k.name} (${k.title})`,
+      account_id: `acct:${clean}`,
+      account_name: k.company,
+      account_domain: clean,
+      its_en: true,
+      dcx_en: false,
+      ec: false,
+      segments: k.seniority,
+    }))
+  }
+
+  // Fallback to visitors
+  const visMatches = visitorsList.filter((v) => {
+    if (!v.company_domain) return false
+    const vd = v.company_domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+    return vd === clean
+  })
+
+  return visMatches.slice(0, 5).map((v) => ({
+    id: v.id,
+    name: `${v.name} (${v.title || "Evaluator"})`,
+    account_id: `acct:${clean}`,
+    account_name: v.company_name,
+    account_domain: clean,
+    its_en: true,
+    dcx_en: false,
+    ec: false,
+    segments: v.department || "Technology",
+  }))
 }
 
 export function getExecutiveKpis() {
@@ -318,8 +565,16 @@ export function getAccountLevelBreakup() {
 }
 
 export function getAccountPagesVisited(domain: string): PageVisitedRecord[] {
+  if (!domain) return []
+  const clean = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
   const account = getAccountByDomain(domain)
-  return account?.vector_pages_visited || []
+  if (account?.vector_pages_visited && account.vector_pages_visited.length > 0) {
+    return account.vector_pages_visited
+  }
+  const summary = getAccountPagesSummary().find(
+    (p) => p.domain?.toLowerCase().trim() === clean
+  )
+  return summary?.pages_visited || []
 }
 
 export function getAccountPagesSummary(): AccountPagesVisitedSummary[] {

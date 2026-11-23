@@ -8,8 +8,17 @@ import { Badge } from "@/components/ui/badge"
 export const instant = false
 
 export function generateStaticParams() {
-  const domains = Array.from(new Set(dbData.accounts.map((account) => account.domain)))
-  return domains.map((domain) => ({
+  const domains = new Set<string>()
+  dbData.accounts.forEach((account) => {
+    if (account.domain) domains.add(account.domain.toLowerCase().trim())
+  })
+  ;((dbData as any).account_level_breakup || []).forEach((comp: any) => {
+    if (comp.domain) domains.add(comp.domain.toLowerCase().trim())
+  })
+  ;((dbData as any).account_pages_visited || []).forEach((acct: any) => {
+    if (acct.domain) domains.add(acct.domain.toLowerCase().trim())
+  })
+  return Array.from(domains).map((domain) => ({
     id: domain,
   }))
 }
@@ -41,7 +50,7 @@ export default async function AccountProfilePage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const decodedId = decodeURIComponent(id)
+  const decodedId = decodeURIComponent(id).trim()
 
   const account = getAccountById(decodedId) || getAccountByDomain(decodedId)
 
@@ -54,16 +63,27 @@ export default async function AccountProfilePage({
   const pagesVisited = account.vector_pages_visited || []
   const totalBusinessPvs = account.total_business_pageviews || pagesVisited.reduce((sum, p) => sum + p.pageviews, 0)
 
+  const backLink = account.is_client
+    ? "/clients"
+    : account.is_target
+    ? "/targets"
+    : "/vector-intel"
+  const backLabel = account.is_client
+    ? "Existing Clients"
+    : account.is_target
+    ? "Target Accounts"
+    : "Vector Intelligence"
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       {/* Back button & Breadcrumbs */}
       <div className="flex items-center justify-between pb-2 border-b border-slate-200">
         <Link
-          href={account.is_client ? "/clients" : "/targets"}
+          href={backLink}
           className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-900 font-medium"
         >
           <ArrowLeft className="size-3.5" />
-          <span>Back to {account.is_client ? "Existing Clients" : "Target Accounts"}</span>
+          <span>Back to {backLabel}</span>
         </Link>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-slate-600 bg-white">
@@ -521,7 +541,7 @@ export default async function AccountProfilePage({
             Section 11: Evidence Audit Trail
           </h3>
           <div className="text-[11px] text-slate-500 space-y-1">
-            <div>• Master Target List (Sheet: `ZI_ITS AND DCX EN Target Compan`): Source classification `{account.target_classification}` confirmed.</div>
+            <div>• Master Account Directory: Source classification `{account.target_classification}` ({account.account_segments}).</div>
             <div>• ZoomInfo MCP ID `{account.zoominfo_id || "566130577"}`: Revenue scale and corporate firmographics verified.</div>
             <div>• Vector MCP Org `129519`: {account.vector_profiles_count} visitor events ingested up to Sun Nov 22 2026.</div>
           </div>

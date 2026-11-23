@@ -51,6 +51,46 @@ export default function VectorIntelPage() {
   const accountBreakup = ((dbData as any).account_level_breakup || []) as AccountLevelBreakupRecord[]
   const accountPagesVisited = ((dbData as any).account_pages_visited || []) as any[]
 
+  // Fast domain lookup map by company name
+  const domainByCompanyName = useMemo(() => {
+    const map = new Map<string, string>()
+    dbData.accounts.forEach((a: any) => {
+      if (a.name && a.domain) map.set(a.name.toLowerCase().trim(), a.domain.toLowerCase().trim())
+    })
+    accountBreakup.forEach((b: any) => {
+      if (b.company && b.domain) map.set(b.company.toLowerCase().trim(), b.domain.toLowerCase().trim())
+    })
+    allVisitors.forEach((v: any) => {
+      if (v.company_name && v.company_domain) map.set(v.company_name.toLowerCase().trim(), v.company_domain.toLowerCase().trim())
+    })
+    accountPagesVisited.forEach((p: any) => {
+      if (p.account_name && p.domain) map.set(p.account_name.toLowerCase().trim(), p.domain.toLowerCase().trim())
+    })
+    return map
+  }, [accountBreakup, allVisitors, accountPagesVisited])
+
+  const getCleanDomain = (item: any): string => {
+    if (!item) return ""
+    if (item.domain && typeof item.domain === "string" && item.domain.trim()) {
+      return item.domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+    }
+    if (item.company_domain && typeof item.company_domain === "string" && item.company_domain.trim()) {
+      return item.company_domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
+    }
+    if (item.email && typeof item.email === "string" && item.email.includes("@")) {
+      const emailDomain = item.email.split("@")[1]?.toLowerCase().trim()
+      if (emailDomain && emailDomain.includes(".")) return emailDomain
+    }
+    const compName = (item.company || item.company_name || "").toLowerCase().trim()
+    if (compName && domainByCompanyName.has(compName)) {
+      return domainByCompanyName.get(compName)!
+    }
+    if (compName && compName.length > 2) {
+      return compName
+    }
+    return ""
+  }
+
   // All visitors from ITS EN, DCX EN target accounts and Existing Client accounts
   const targetClientVisitors = useMemo(() => {
     return allVisitors.filter((v) => v.is_target_client)
@@ -559,13 +599,19 @@ export default function VectorIntelPage() {
                         <div className="text-[10px] text-slate-400">{v.department}</div>
                       </td>
                       <td className="py-3 px-3">
-                        <Link
-                          href={`/accounts/${v.company_domain}`}
-                          className="font-medium text-blue-700 hover:underline"
-                        >
-                          {v.company_name}
-                        </Link>
-                        <div className="text-[10px] text-slate-400">{v.company_domain}</div>
+                        {getCleanDomain(v) ? (
+                          <Link
+                            href={`/accounts/${encodeURIComponent(getCleanDomain(v))}`}
+                            className="font-medium text-blue-700 hover:underline"
+                          >
+                            {v.company_name || v.company_domain}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-slate-800">
+                            {v.company_name || "Confidential Organization"}
+                          </span>
+                        )}
+                        {v.company_domain && <div className="text-[10px] text-slate-400">{v.company_domain}</div>}
                       </td>
                       <td className="py-3 px-3">
                         <div className="text-slate-700">{v.industry}</div>
@@ -635,7 +681,16 @@ export default function VectorIntelPage() {
                       <td className="py-3 px-3 font-semibold text-slate-900">{v.name}</td>
                       <td className="py-3 px-3 text-slate-700 font-medium">{v.title}</td>
                       <td className="py-3 px-3">
-                        <div className="font-semibold text-slate-900">{v.company}</div>
+                        {getCleanDomain(v) ? (
+                          <Link
+                            href={`/accounts/${encodeURIComponent(getCleanDomain(v))}`}
+                            className="font-semibold text-slate-900 hover:text-blue-700 hover:underline transition-colors block leading-tight"
+                          >
+                            {v.company}
+                          </Link>
+                        ) : (
+                          <div className="font-semibold text-slate-900">{v.company}</div>
+                        )}
                         <div className="text-[10px] text-slate-400">{v.industry}</div>
                       </td>
                       <td className="py-3 px-3 font-medium text-emerald-700">{v.annual_revenue}</td>
@@ -688,13 +743,19 @@ export default function VectorIntelPage() {
                         <div className="text-[10px] text-slate-400">{v.department}</div>
                       </td>
                       <td className="py-3 px-3">
-                        <Link
-                          href={`/accounts/${v.company_domain}`}
-                          className="font-medium text-blue-700 hover:underline"
-                        >
-                          {v.company_name}
-                        </Link>
-                        <div className="text-[10px] text-slate-400">{v.company_domain}</div>
+                        {getCleanDomain(v) ? (
+                          <Link
+                            href={`/accounts/${encodeURIComponent(getCleanDomain(v))}`}
+                            className="font-medium text-blue-700 hover:underline"
+                          >
+                            {v.company_name || v.company_domain}
+                          </Link>
+                        ) : (
+                          <span className="font-medium text-slate-800">
+                            {v.company_name || "Confidential Organization"}
+                          </span>
+                        )}
+                        {v.company_domain && <div className="text-[10px] text-slate-400">{v.company_domain}</div>}
                       </td>
                       <td className="py-3 px-3">
                         <Badge
@@ -781,7 +842,7 @@ export default function VectorIntelPage() {
                       </td>
                       <td className="py-3 px-4">
                         <Link
-                          href={`/accounts/${comp.domain}`}
+                          href={`/accounts/${encodeURIComponent(getCleanDomain(comp))}`}
                           className="font-semibold text-slate-900 hover:text-blue-700 transition-colors"
                         >
                           {comp.company}
@@ -850,7 +911,7 @@ export default function VectorIntelPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <Link
-                          href={`/accounts/${comp.domain}`}
+                          href={`/accounts/${encodeURIComponent(getCleanDomain(comp))}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
                         >
                           <span>Scope Card</span>
@@ -890,7 +951,7 @@ export default function VectorIntelPage() {
                     <tr key={acct.account_id || acct.domain} className="hover:bg-slate-50/60 transition-colors">
                       <td className="py-3 px-4">
                         <Link
-                          href={`/accounts/${acct.domain}`}
+                          href={`/accounts/${encodeURIComponent(getCleanDomain(acct))}`}
                           className="font-semibold text-slate-900 hover:text-blue-700 transition-colors text-sm block leading-tight"
                         >
                           {acct.account_name}
@@ -964,7 +1025,7 @@ export default function VectorIntelPage() {
                       </td>
                       <td className="py-3 px-4 text-right">
                         <Link
-                          href={`/accounts/${acct.domain}`}
+                          href={`/accounts/${encodeURIComponent(getCleanDomain(acct))}`}
                           className="inline-flex items-center gap-1 px-2.5 py-1 rounded border border-slate-200 text-[11px] font-medium text-slate-700 hover:bg-slate-100 transition-colors shadow-2xs"
                         >
                           <span>Scope Card</span>
@@ -994,7 +1055,7 @@ export default function VectorIntelPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     <Link
-                      href={`/accounts/${acct.domain}`}
+                      href={`/accounts/${encodeURIComponent(getCleanDomain(acct))}`}
                       className="font-semibold text-slate-900 text-sm hover:text-blue-700 transition-colors leading-tight block"
                     >
                       {acct.account_name}
@@ -1051,7 +1112,7 @@ export default function VectorIntelPage() {
 
                 <div className="pt-1">
                   <Link
-                    href={`/accounts/${acct.domain}`}
+                    href={`/accounts/${encodeURIComponent(getCleanDomain(acct))}`}
                     className="w-full flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-800 bg-slate-50 hover:bg-slate-100 transition-colors"
                   >
                     <span>View Account Scope Card</span>
@@ -1071,7 +1132,7 @@ export default function VectorIntelPage() {
                     </span>
                     <div>
                       <Link
-                        href={`/accounts/${comp.domain}`}
+                        href={`/accounts/${encodeURIComponent(getCleanDomain(comp))}`}
                         className="font-semibold text-slate-900 text-sm hover:text-blue-700 transition-colors leading-tight block"
                       >
                         {comp.company}
@@ -1143,7 +1204,7 @@ export default function VectorIntelPage() {
 
                 <div className="pt-1">
                   <Link
-                    href={`/accounts/${comp.domain}`}
+                    href={`/accounts/${encodeURIComponent(getCleanDomain(comp))}`}
                     className="w-full flex items-center justify-center gap-1 py-2 px-3 rounded-lg border border-slate-200 text-xs font-medium text-slate-800 bg-slate-50 hover:bg-slate-100 transition-colors"
                   >
                     <span>View Account Scope Card</span>
@@ -1186,13 +1247,20 @@ export default function VectorIntelPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 text-xs pt-0.5">
-                  <Link
-                    href={`/accounts/${v.company_domain || v.company}`}
-                    className="font-medium text-blue-700 hover:underline flex items-center gap-1"
-                  >
-                    <Building2 className="size-3 text-slate-400" />
-                    <span>{v.company_name || v.company}</span>
-                  </Link>
+                  {getCleanDomain(v) ? (
+                    <Link
+                      href={`/accounts/${encodeURIComponent(getCleanDomain(v))}`}
+                      className="font-medium text-blue-700 hover:underline flex items-center gap-1"
+                    >
+                      <Building2 className="size-3 text-slate-400" />
+                      <span>{v.company_name || v.company}</span>
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-slate-800 flex items-center gap-1">
+                      <Building2 className="size-3 text-slate-400" />
+                      <span>{v.company_name || v.company || "Confidential Organization"}</span>
+                    </span>
+                  )}
 
                   {v.location && (
                     <span className="text-[11px] text-slate-500 flex items-center gap-0.5">
