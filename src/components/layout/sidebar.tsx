@@ -12,7 +12,6 @@ import {
   Activity,
   BarChart3,
   Users,
-  Target,
   Sparkles,
   Lightbulb,
   ShieldCheck,
@@ -69,11 +68,6 @@ const navigationGroups = [
         href: "/buying-committee",
         icon: Users,
         badge: "113",
-      },
-      {
-        title: "ABM Campaigns",
-        href: "/abm",
-        icon: Target,
       },
       {
         title: "Sales Intelligence",
