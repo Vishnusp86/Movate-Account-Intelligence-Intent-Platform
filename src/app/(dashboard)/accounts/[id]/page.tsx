@@ -42,7 +42,9 @@ import {
   ThumbsUp,
   ThumbsDown,
   Globe,
+  Newspaper,
 } from "lucide-react"
+import { getCompanyNews } from "@/lib/connectors/google-news"
 
 export default async function AccountProfilePage({
   params,
@@ -62,6 +64,7 @@ export default async function AccountProfilePage({
   const contacts = getMatchedContactsForAccount(account.domain)
   const pagesVisited = account.vector_pages_visited || []
   const totalBusinessPvs = account.total_business_pageviews || pagesVisited.reduce((sum, p) => sum + p.pageviews, 0)
+  const newsArticles = await getCompanyNews(account.name, { limit: 2, domain: account.domain })
 
   const backLink = account.is_client
     ? "/clients"
@@ -302,6 +305,36 @@ export default async function AccountProfilePage({
                     Decision-makers actively visiting from North America engineering hubs.
                   </div>
                 </div>
+
+                {/* Google News RSS Syndicated Market Triggers */}
+                {newsArticles.map((article) => (
+                  <div key={article.id} className="p-3 rounded-lg border border-amber-200/90 bg-amber-50/40">
+                    <div className="flex items-center justify-between text-xs font-semibold text-amber-950">
+                      <span className="flex items-center gap-1.5">
+                        <Newspaper className="size-3.5 text-amber-700" />
+                        <span>Google News: {article.triggerType} Trigger</span>
+                      </span>
+                      <span className="text-[10px] text-amber-700 font-medium">{article.timeAgo}</span>
+                    </div>
+                    <div className="mt-1">
+                      <a
+                        href={article.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-medium text-slate-800 hover:text-blue-700 hover:underline inline-flex items-center gap-1"
+                        title={article.title}
+                      >
+                        <span className="line-clamp-2">{article.title}</span>
+                        <ExternalLink className="size-3 shrink-0 text-slate-400" />
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1.5 text-[10px] text-slate-500">
+                      <span className="font-semibold text-slate-700">{article.source}</span>
+                      <span>•</span>
+                      <span>Public Syndication RSS</span>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 
@@ -544,6 +577,7 @@ export default async function AccountProfilePage({
             <div>• Master Account Directory: Source classification `{account.target_classification}` ({account.account_segments}).</div>
             <div>• ZoomInfo MCP ID `{account.zoominfo_id || "566130577"}`: Revenue scale and corporate firmographics verified.</div>
             <div>• Vector MCP Org `129519`: {account.vector_profiles_count} visitor events ingested up to Sun Nov 22 2026.</div>
+            <div>• Google News RSS Syndication: Public market news and trigger feeds actively monitored (45-day decay half-life).</div>
           </div>
         </div>
       </div>

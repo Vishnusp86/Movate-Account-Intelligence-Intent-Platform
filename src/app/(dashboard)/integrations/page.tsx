@@ -47,11 +47,11 @@ export default function IntegrationsPage() {
       type: "Entitlement-Limited",
     },
     {
-      name: "Google News & GDELT",
+      name: "Google News & Market Trends",
       purpose: "Leadership changes, funding, M&A, and public corporate event triggers",
       auth: "Public Syndication Feeds",
-      status: "Active & Monitored",
-      details: "Deduplication by canonical URL and title similarity",
+      status: "Connected & Ingesting",
+      details: "Live Google News RSS syndicated to Section 6 of Account Scope Cards • 0 API Cost",
       type: "Free / Public",
     },
   ]
