@@ -7,8 +7,13 @@
         "mcp"
       ]
     },
-    "Vector": {
-      "url": "https://mcp.vector.co/mcp"
+    "vector": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.vector.co/mcp"
+      ]
     }
   }
 }

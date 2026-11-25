@@ -10,14 +10,20 @@ import urllib.parse
 import sys
 
 TOKEN_PATH = os.path.expanduser(r"~/.mcp-auth/mcp-remote-v1/fc04264f6955529134fa86c6ee1ce1e6_tokens.json")
+LOCAL_TOKEN_PATH = os.path.join(os.path.dirname(__file__), "..", ".vector_tokens.json")
 MCP_URL = "https://mcp.vector.co/mcp"
 TOKEN_ENDPOINT = "https://auth.vector.co/oauth/2.1/token"
 
 def get_valid_token():
-    if not os.path.exists(TOKEN_PATH):
-        raise FileNotFoundError(f"Tokens file not found at {TOKEN_PATH}")
+    target_path = None
+    if os.path.exists(TOKEN_PATH):
+        target_path = TOKEN_PATH
+    elif os.path.exists(LOCAL_TOKEN_PATH):
+        target_path = LOCAL_TOKEN_PATH
+    else:
+        raise FileNotFoundError(f"Tokens file not found at {TOKEN_PATH} or {LOCAL_TOKEN_PATH}")
     
-    with open(TOKEN_PATH, "r", encoding="utf-8") as f:
+    with open(target_path, "r", encoding="utf-8") as f:
         tokens = json.load(f)
     
     expires_at = tokens.get("expires_at", 0) / 1000.0
@@ -38,8 +44,12 @@ def get_valid_token():
             tokens.update(new_tokens)
             tokens["expires_at"] = int((time.time() + tokens.get("expires_in", 3600)) * 1000)
             
-            with open(TOKEN_PATH, "w", encoding="utf-8") as out:
-                json.dump(tokens, out, indent=2)
+            for path in [TOKEN_PATH, LOCAL_TOKEN_PATH]:
+                try:
+                    with open(path, "w", encoding="utf-8") as out:
+                        json.dump(tokens, out, indent=2)
+                except Exception:
+                    pass
             print("[VectorMCP] Token refreshed successfully.", file=sys.stderr)
             
     return tokens["access_token"]

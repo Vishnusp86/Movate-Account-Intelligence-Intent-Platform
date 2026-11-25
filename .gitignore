@@ -48,5 +48,6 @@ __pycache__/
 ~$*
 # scratch files
 scratch/
+.vector_tokens.json
 scratch_dom.html
 

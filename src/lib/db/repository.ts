@@ -316,7 +316,13 @@ function synthesizeProspectAccount(cleanQuery: string): CanonicalAccount | undef
       (v.company_name && v.company_name.toLowerCase().trim() === name.toLowerCase().trim())
   )
   const visitorCount = breakupMatch?.visitors || matchingVisitors.length || (pagesMatch ? pagesMatch.visitors_count : 1)
-  const pagesVisited = pagesMatch?.pages_visited || []
+  let pagesVisited = pagesMatch?.pages_visited || []
+  if (pagesVisited.length === 0) {
+    const summaryItem = getAccountPagesSummary().find((p) => p.domain?.toLowerCase().trim() === domain)
+    if (summaryItem?.pages_visited && summaryItem.pages_visited.length > 0) {
+      pagesVisited = summaryItem.pages_visited
+    }
+  }
   const totalBusinessPvs = pagesMatch?.total_pageviews || pagesVisited.reduce((s, p) => s + p.pageviews, 0) || (visitorCount * 3)
 
   // Classification & segments
@@ -356,6 +362,11 @@ function synthesizeProspectAccount(cleanQuery: string): CanonicalAccount | undef
       ? "Tier 2: Engage via ABM"
       : "Tier 3: Nurture / Monitor"
 
+  const hasDcx = breakupMatch?.dcx_en || pagesVisited.some((p) => p.category === "Digital CX")
+  const hasAi = pagesVisited.some((p) => p.category === "AI & GenAI")
+  const hasCloud = breakupMatch?.its_en || pagesVisited.some((p) => p.category === "Cloud & IT Ops")
+  const hasCyber = pagesVisited.some((p) => p.page_url.includes("cybersecurity") || p.page_url.includes("security"))
+
   return {
     id: `acct:${domain}`,
     name,
@@ -384,10 +395,10 @@ function synthesizeProspectAccount(cleanQuery: string): CanonicalAccount | undef
     data_completeness: 85,
     client_growth_score: isClient ? 75 : 0,
     service_penetration: {
-      "Digital CX": breakupMatch?.dcx_en ? "Inferred" : "Unknown",
-      "AI & GenAI": "Inferred",
-      "Cloud & IT Ops": breakupMatch?.its_en ? "Inferred" : "Unknown",
-      Cybersecurity: "Unknown",
+      "Digital CX": isClient && breakupMatch?.dcx_en ? "Confirmed" : hasDcx ? "Inferred" : "Unknown",
+      "AI & GenAI": hasAi ? "Inferred" : "Unknown",
+      "Cloud & IT Ops": isClient && breakupMatch?.its_en ? "Confirmed" : hasCloud ? "Inferred" : "Unknown",
+      Cybersecurity: hasCyber ? "Inferred" : "Unknown",
     },
     intent_topics: [
       { topic: "AI Transformation", score: 88, surge: "Surging (92nd percentile)", service_line: "AI & GenAI" },
