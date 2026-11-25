@@ -324,7 +324,7 @@ function synthesizeProspectAccount(cleanQuery: string): CanonicalAccount | undef
       pagesVisited = summaryItem.pages_visited
     }
   }
-  const totalBusinessPvs = pagesMatch?.total_pageviews || pagesVisited.reduce((s, p) => s + p.pageviews, 0) || (visitorCount * 3)
+  const totalBusinessPvs = pagesMatch?.total_pageviews || pagesVisited.reduce((s, p) => s + p.pageviews, 0) || (hasVisitors ? visitorCount * 3 : 0)
 
   // Classification & segments
   const isTarget = breakupMatch?.is_target || false
