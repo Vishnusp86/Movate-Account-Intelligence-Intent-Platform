@@ -293,7 +293,6 @@ export default function VectorIntelPage() {
             <CheckCircle2 className="size-3" />
             Live Ingestion Active
           </Badge>
-          <span className="text-[11px] text-slate-400">Freshness: Sun Nov 22 2026</span>
         </div>
       </div>
 

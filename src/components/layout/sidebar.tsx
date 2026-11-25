@@ -15,7 +15,6 @@ import {
   Sparkles,
   Lightbulb,
   ShieldCheck,
-  Cpu,
   BookOpen,
   Zap,
   X,
@@ -89,11 +88,6 @@ const navigationGroups = [
         title: "Data Quality",
         href: "/data-quality",
         icon: ShieldCheck,
-      },
-      {
-        title: "Integrations & Governor",
-        href: "/integrations",
-        icon: Cpu,
       },
       {
         title: "Runbooks & Help",

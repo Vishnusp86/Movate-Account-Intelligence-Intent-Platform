@@ -599,7 +599,7 @@ export default async function AccountProfilePage({
           <div className="text-[11px] text-slate-500 space-y-1">
             <div>• Master Account Directory: Source classification `{account.target_classification}` ({account.account_segments}).</div>
             <div>• ZoomInfo MCP ID `{account.zoominfo_id || "566130577"}`: Revenue scale and corporate firmographics verified.</div>
-            <div>• Vector MCP Org `129519`: {account.vector_profiles_count} visitor events ingested up to Sun Nov 22 2026.</div>
+            <div>• Vector MCP Org `129519`: {account.vector_profiles_count} visitor events ingested.</div>
             <div>• Google News RSS Syndication: Public market news and trigger feeds actively monitored (45-day decay half-life).</div>
           </div>
         </div>
