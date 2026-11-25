@@ -177,13 +177,17 @@ export default async function AccountProfilePage({
           <div className="p-3 sm:p-4 text-center border-b lg:border-b-0 border-r border-slate-200">
             <div className="text-[11px] text-slate-500 font-medium">Buying Intent</div>
             <div className="text-lg sm:text-xl font-bold text-blue-700 mt-0.5">{account.intent_score}</div>
-            <div className="text-[10px] text-blue-600 mt-0.5">Surging on 5 topics</div>
+            <div className="text-[10px] text-blue-600 mt-0.5">
+              {account.intent_topics?.length > 0 ? `${account.intent_topics.length} topics tracked` : "Baseline intent"}
+            </div>
           </div>
 
           <div className="p-3 sm:p-4 text-center border-b lg:border-b-0 sm:border-r border-slate-200">
             <div className="text-[11px] text-slate-500 font-medium">Engagement</div>
             <div className="text-lg sm:text-xl font-bold text-teal-700 mt-0.5">{account.engagement_score}</div>
-            <div className="text-[10px] text-teal-600 mt-0.5">{account.vector_profiles_count} Vector visitors</div>
+            <div className="text-[10px] text-teal-600 mt-0.5">
+              {account.vector_profiles_count > 0 ? `${account.vector_profiles_count} Vector visitors` : "0 Vector visitors"}
+            </div>
           </div>
 
           <div className="p-3 sm:p-4 text-center border-r border-slate-200">
@@ -248,13 +252,17 @@ export default async function AccountProfilePage({
                 Section 5: Estimated Buying Stage
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm font-bold text-blue-900">Active Evaluation / Solution Research</span>
+                <span className="text-sm font-bold text-blue-900">
+                  {account.intent_score >= 80 ? "Active Evaluation / Solution Research" : account.intent_score >= 60 ? "Warm Consideration / Monitoring" : "Dormant / Early Awareness"}
+                </span>
                 <Badge variant="outline" className="text-[10px] bg-white border-blue-200 text-blue-700">
-                  Confidence: High
+                  Confidence: {account.vector_profiles_count > 0 ? "High (Corroborated)" : "Moderate (Third-Party)"}
                 </Badge>
               </div>
               <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
-                Observed multi-visit consumption of Movate AI engineering and data analytics pages corroborates external ZoomInfo Cloud Migration intent surge.
+                {account.vector_profiles_count > 0
+                  ? "Observed first-party website consumption of Movate solutions pages corroborates intent signals."
+                  : "No first-party website visits detected in Vector yet. Buying stage estimated from ZoomInfo third-party intent surges and firmographic qualification."}
               </p>
             </div>
           </div>
@@ -267,18 +275,33 @@ export default async function AccountProfilePage({
                 Section 6: Why Now (Top Corroborating Signals)
               </h3>
               <div className="space-y-2.5">
-                <div className="p-3 rounded-lg border border-emerald-100 bg-emerald-50/40">
-                  <div className="flex items-center justify-between text-xs font-semibold text-emerald-900">
-                    <span className="flex items-center gap-1.5">
-                      <Activity className="size-3.5 text-emerald-700" />
-                      Vector Website Engagement Surge
-                    </span>
-                    <span className="text-[10px] text-emerald-700">Observed 2026-11-22</span>
+                {account.vector_profiles_count > 0 ? (
+                  <div className="p-3 rounded-lg border border-emerald-100 bg-emerald-50/40">
+                    <div className="flex items-center justify-between text-xs font-semibold text-emerald-900">
+                      <span className="flex items-center gap-1.5">
+                        <Activity className="size-3.5 text-emerald-700" />
+                        Vector Website Engagement Surge
+                      </span>
+                      <span className="text-[10px] text-emerald-700">Observed 2026-11-22</span>
+                    </div>
+                    <div className="text-xs text-slate-700 mt-1">
+                      {account.vector_profiles_count} profiles identified visiting Movate solutions pages repeatedly over 14 days.
+                    </div>
                   </div>
-                  <div className="text-xs text-slate-700 mt-1">
-                    {account.vector_profiles_count} profiles identified visiting Movate AI and Engineering solutions pages repeatedly over 14 days.
+                ) : (
+                  <div className="p-3 rounded-lg border border-slate-200 bg-slate-50/70">
+                    <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+                      <span className="flex items-center gap-1.5">
+                        <Activity className="size-3.5 text-slate-400" />
+                        Vector First-Party Activity: Dormant
+                      </span>
+                      <span className="text-[10px] text-slate-500 font-medium">0 Visitors Recorded</span>
+                    </div>
+                    <div className="text-xs text-slate-500 mt-1">
+                      No inbound website sessions recorded for this domain in the current 30-day window. Recommend outbound sales activation.
+                    </div>
                   </div>
-                </div>
+                )}
 
                 <div className="p-3 rounded-lg border border-blue-100 bg-blue-50/40">
                   <div className="flex items-center justify-between text-xs font-semibold text-blue-900">

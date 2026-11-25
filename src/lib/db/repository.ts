@@ -315,9 +315,10 @@ function synthesizeProspectAccount(cleanQuery: string): CanonicalAccount | undef
       v.company_domain?.toLowerCase().trim() === domain ||
       (v.company_name && v.company_name.toLowerCase().trim() === name.toLowerCase().trim())
   )
-  const visitorCount = breakupMatch?.visitors || matchingVisitors.length || (pagesMatch ? pagesMatch.visitors_count : 1)
-  let pagesVisited = pagesMatch?.pages_visited || []
-  if (pagesVisited.length === 0) {
+  const visitorCount = breakupMatch?.visitors || matchingVisitors.length || (pagesMatch ? pagesMatch.visitors_count : 0)
+  const hasVisitors = visitorCount > 0
+  let pagesVisited = hasVisitors ? (pagesMatch?.pages_visited || []) : []
+  if (hasVisitors && pagesVisited.length === 0) {
     const summaryItem = getAccountPagesSummary().find((p) => p.domain?.toLowerCase().trim() === domain)
     if (summaryItem?.pages_visited && summaryItem.pages_visited.length > 0) {
       pagesVisited = summaryItem.pages_visited
@@ -579,6 +580,9 @@ export function getAccountPagesVisited(domain: string): PageVisitedRecord[] {
   if (!domain) return []
   const clean = domain.toLowerCase().replace(/^(https?:\/\/)?(www\.)?/, "").split("/")[0].trim()
   const account = getAccountByDomain(domain)
+  if (account && (!account.has_vector_visitors || account.vector_profiles_count === 0)) {
+    return []
+  }
   if (account?.vector_pages_visited && account.vector_pages_visited.length > 0) {
     return account.vector_pages_visited
   }
